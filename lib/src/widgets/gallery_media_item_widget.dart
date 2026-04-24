@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:extended_image/extended_image.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 
@@ -76,9 +77,17 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
         fit: StackFit.expand,
         children: [
           if (widget.isAudio)
-            const Center(
-              child: Icon(Icons.audiotrack, size: 100, color: Colors.white54),
-            )
+            if (widget.item.thumbnailUrl != null)
+              Center(
+                child: ExtendedImage.network(
+                  widget.item.thumbnailUrl!,
+                  fit: BoxFit.contain,
+                ),
+              )
+            else
+              const Center(
+                child: Icon(Icons.audiotrack, size: 100, color: Colors.white54),
+              )
           else
             Center(
               child: Video(
@@ -87,6 +96,18 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
                 fit: BoxFit.contain,
               ),
             ),
+
+          // Transparent overlay to catch taps for toggling UI (only for background, not play/pause)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                final bloc = context.read<GalleryBloc>();
+                bloc.add(GalleryToggleUI(isVisible: !bloc.state.isUIVisible));
+              },
+              child: const SizedBox.expand(),
+            ),
+          ),
 
           // Central Controls: Play/Pause button & Buffering indicator
           Center(
@@ -119,6 +140,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
                       opacity: isPlaying ? 0.0 : 1.0,
                       duration: const Duration(milliseconds: 300),
                       child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
                         onTap: () {
                           if (isPlaying) {
                             player.pause();
@@ -126,16 +148,21 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
                             player.play();
                           }
                         },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 48,
+                        child: Padding(
+                          padding: const EdgeInsets.all(
+                            40.0,
+                          ), // Expands the clickable area
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.white,
+                              size: 48,
+                            ),
                           ),
                         ),
                       ),

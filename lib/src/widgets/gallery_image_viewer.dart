@@ -129,14 +129,19 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                 if (isSecondTap) {
                   _singleTapTimer?.cancel();
                 } else {
-                  _singleTapTimer = Timer(
-                    const Duration(milliseconds: 250),
-                    () {
-                      if (mounted) {
-                        context.read<GalleryBloc>().add(GalleryToggleUI());
-                      }
-                    },
-                  );
+                  final currentItem = state.items.isNotEmpty
+                      ? state.items[state.currentIndex]
+                      : null;
+                  if (currentItem?.type == GalleryItemType.image) {
+                    _singleTapTimer = Timer(
+                      const Duration(milliseconds: 250),
+                      () {
+                        if (mounted) {
+                          context.read<GalleryBloc>().add(GalleryToggleUI());
+                        }
+                      },
+                    );
+                  }
                 }
                 return;
               }

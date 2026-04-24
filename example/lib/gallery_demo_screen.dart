@@ -3,17 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:k_gallery/k_gallery.dart';
 
-class KGalleryScreen extends StatefulWidget {
+class DemoGalleryScreen extends StatefulWidget {
   static const id = 'k_gallery_demo';
   static const path = '/$id';
 
-  const KGalleryScreen({super.key});
+  const DemoGalleryScreen({super.key});
 
   @override
-  State<KGalleryScreen> createState() => _KGalleryScreenState();
+  State<DemoGalleryScreen> createState() => _DemoGalleryScreenState();
 }
 
-class _KGalleryScreenState extends State<KGalleryScreen> {
+class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
   final ScrollController _scrollController = ScrollController();
 
   int _getCrossAxisCount(BuildContext context) {
@@ -122,6 +122,7 @@ class _KGalleryScreenState extends State<KGalleryScreen> {
         itemBuilder: (context, index) {
           final item = contentList[index];
           return GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () async {
               final result = await context.push<int>(
                 KGalleryDetailScreen.id,
@@ -140,13 +141,41 @@ class _KGalleryScreenState extends State<KGalleryScreen> {
             },
             child: Hero(
               tag: item.url,
-              child: CachedNetworkImage(
-                imageUrl: item.url,
-                fit: BoxFit.cover,
-                placeholder: (context, url) =>
-                    const Center(child: CircularProgressIndicator()),
-                errorWidget: (context, url, error) => const Icon(Icons.error),
-              ),
+              child:
+                  (item.type != GalleryItemType.image &&
+                      item.thumbnailUrl == null)
+                  ? Container(
+                      color: Colors.grey[900],
+                      alignment: Alignment.center,
+                      child: Icon(
+                        item.type == GalleryItemType.video
+                            ? Icons.videocam
+                            : Icons.audiotrack,
+                        size: 32,
+                        color: Colors.white54,
+                      ),
+                    )
+                  : CachedNetworkImage(
+                      imageUrl: item.thumbnailUrl ?? item.url,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[900],
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[900],
+                        alignment: Alignment.center,
+                        child: Icon(
+                          item.type == GalleryItemType.video
+                              ? Icons.videocam
+                              : item.type == GalleryItemType.audio
+                              ? Icons.audiotrack
+                              : Icons.image_not_supported,
+                          size: 32,
+                          color: Colors.white54,
+                        ),
+                      ),
+                    ),
             ),
           );
         },
