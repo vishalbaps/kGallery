@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:media_kit/media_kit.dart';
 import '../bloc/gallery_bloc.dart';
+import '../models/gallery_item.dart';
+import 'gallery_media_item_widget.dart';
 
 class GalleryImageViewer extends StatefulWidget {
   final ExtendedPageController pageController;
@@ -11,6 +14,7 @@ class GalleryImageViewer extends StatefulWidget {
   final bool isZoomEnable;
   final bool isSwipeToDismiss;
   final GlobalKey<ExtendedImageSlidePageState> slidePageKey;
+  final ValueNotifier<Player?> activePlayerNotifier;
 
   const GalleryImageViewer({
     super.key,
@@ -19,6 +23,7 @@ class GalleryImageViewer extends StatefulWidget {
     required this.isZoomEnable,
     required this.isSwipeToDismiss,
     required this.slidePageKey,
+    required this.activePlayerNotifier,
   });
 
   @override
@@ -177,6 +182,17 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
               },
               itemBuilder: (BuildContext context, int index) {
                 final item = state.items[index];
+
+                if (item.type == GalleryItemType.video ||
+                    item.type == GalleryItemType.audio) {
+                  return GalleryMediaItemWidget(
+                    item: item,
+                    index: index,
+                    activePlayerNotifier: widget.activePlayerNotifier,
+                    isAudio: item.type == GalleryItemType.audio,
+                  );
+                }
+
                 final gestureKey = _gestureKeys.putIfAbsent(
                   index,
                   () => GlobalKey<ExtendedImageGestureState>(),

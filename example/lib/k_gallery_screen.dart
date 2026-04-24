@@ -55,6 +55,29 @@ class _KGalleryScreenState extends State<KGalleryScreen> {
   @override
   Widget build(BuildContext context) {
     final List<GalleryItem> contentList = List.generate(100, (index) {
+      if (index == 0) {
+        return const GalleryItem(
+          url:
+              'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
+          type: GalleryItemType.video,
+          title: 'Big Buck Bunny (Video)',
+          description:
+              'A large and lovable rabbit deals with three bullying rodents. This demonstrates the MediaKit integration.',
+          thumbnailUrl:
+              'https://storage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+        );
+      }
+      if (index == 1) {
+        return const GalleryItem(
+          url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+          type: GalleryItemType.audio,
+          title: 'SoundHelix Song 1 (Audio)',
+          description:
+              'A long audio track to demonstrate the audio player interface.',
+          thumbnailUrl: 'https://loremflickr.com/600/800/music?lock=999',
+        );
+      }
+
       String? title;
       String? description;
 
@@ -78,7 +101,7 @@ class _KGalleryScreenState extends State<KGalleryScreen> {
 
       return GalleryItem(
         url:
-            'https://loremflickr.com/600/800/nature,landscape?lock=${index + 1}',
+            'https://loremflickr.com/600/800/nature,landscape?lock=${index + 3}',
         type: GalleryItemType.image,
         title: title,
         description: description,

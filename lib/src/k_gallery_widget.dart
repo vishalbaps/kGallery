@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shimmer/shimmer.dart';
 import 'bloc/gallery_bloc.dart';
@@ -53,6 +54,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
       GlobalKey<ExtendedImageSlidePageState>();
   late GalleryBloc _galleryBloc;
   final GlobalKey _textContentKey = GlobalKey();
+  final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
 
   late final Widget _effectiveProgressWidget;
   late final Widget _effectiveThumbProgressWidget;
@@ -63,6 +65,11 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    try {
+      MediaKit.ensureInitialized();
+    } catch (e) {
+      debugPrint('MediaKit initialization failed or already initialized: $e');
+    }
 
     _effectiveProgressWidget =
         widget.progressWidget ??
@@ -121,6 +128,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                       isZoomEnable: widget.isZoomEnable,
                       isSwipeToDismiss: widget.isSwipeToDismiss,
                       slidePageKey: _slidePageKey,
+                      activePlayerNotifier: activePlayerNotifier,
                     ),
 
                     BlocBuilder<GalleryBloc, GalleryState>(
@@ -205,141 +213,179 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
 
                         final double textPanelHeight = state.textPanelHeight;
 
-                        final double bottomOffset =
+                        final bool hasSeekbar =
+                            currentItem.type == GalleryItemType.video ||
+                            currentItem.type == GalleryItemType.audio;
+                        final double seekbarHeight = 40.0;
+
+                        final double textBottomOffset =
+                            (state.isUIVisible && !state.isSliding)
+                            ? MediaQuery.of(context).padding.bottom +
+                                  thumbnailStripHeight +
+                                  (hasSeekbar ? seekbarHeight : 0.0)
+                            : -500;
+
+                        final double seekbarBottomOffset =
                             (state.isUIVisible && !state.isSliding)
                             ? MediaQuery.of(context).padding.bottom +
                                   thumbnailStripHeight
                             : -500;
 
-                        return AnimatedPositioned(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                          bottom: bottomOffset,
-                          left: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onVerticalDragUpdate: (details) {
-                              double newHeight =
-                                  textPanelHeight - (details.primaryDelta ?? 0);
+                        return Stack(
+                          children: [
+                            if (hasSeekbar)
+                              AnimatedPositioned(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                bottom: seekbarBottomOffset,
+                                left: 0,
+                                right: 0,
+                                height: seekbarHeight,
+                                child: ValueListenableBuilder<Player?>(
+                                  valueListenable: activePlayerNotifier,
+                                  builder: (context, player, child) {
+                                    if (player == null)
+                                      return const SizedBox.shrink();
+                                    return _buildSeekbar(player);
+                                  },
+                                ),
+                              ),
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              bottom: textBottomOffset,
+                              left: 0,
+                              right: 0,
+                              child: GestureDetector(
+                                onVerticalDragUpdate: (details) {
+                                  double newHeight =
+                                      textPanelHeight -
+                                      (details.primaryDelta ?? 0);
 
-                              final double maxAvailableHeight =
-                                  constraints.maxHeight -
-                                  MediaQuery.of(context).padding.top -
-                                  topBarHeight -
-                                  MediaQuery.of(context).padding.bottom -
-                                  thumbnailStripHeight;
+                                  final double maxAvailableHeight =
+                                      constraints.maxHeight -
+                                      MediaQuery.of(context).padding.top -
+                                      topBarHeight -
+                                      MediaQuery.of(context).padding.bottom -
+                                      thumbnailStripHeight;
 
-                              double contentHeight = maxAvailableHeight;
-                              final renderBox =
-                                  _textContentKey.currentContext
-                                          ?.findRenderObject()
-                                      as RenderBox?;
-                              if (renderBox != null) {
-                                contentHeight = renderBox.size.height + 10;
-                              }
+                                  double contentHeight = maxAvailableHeight;
+                                  final renderBox =
+                                      _textContentKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (renderBox != null) {
+                                    contentHeight = renderBox.size.height + 10;
+                                  }
 
-                              final double clampedMax = contentHeight.clamp(
-                                GalleryState.minTextPanelHeight,
-                                maxAvailableHeight,
-                              );
-                              newHeight = newHeight.clamp(
-                                GalleryState.minTextPanelHeight,
-                                clampedMax,
-                              );
-                              context.read<GalleryBloc>().add(
-                                GalleryTextPanelHeightChanged(newHeight),
-                              );
-                            },
-                            onVerticalDragEnd: (details) {
-                              final double velocity =
-                                  details.primaryVelocity ?? 0;
-                              final double maxAvailableHeight =
-                                  constraints.maxHeight -
-                                  MediaQuery.of(context).padding.top -
-                                  topBarHeight -
-                                  MediaQuery.of(context).padding.bottom -
-                                  thumbnailStripHeight;
+                                  final double clampedMax = contentHeight.clamp(
+                                    GalleryState.minTextPanelHeight,
+                                    maxAvailableHeight,
+                                  );
+                                  newHeight = newHeight.clamp(
+                                    GalleryState.minTextPanelHeight,
+                                    clampedMax,
+                                  );
+                                  context.read<GalleryBloc>().add(
+                                    GalleryTextPanelHeightChanged(newHeight),
+                                  );
+                                },
+                                onVerticalDragEnd: (details) {
+                                  final double velocity =
+                                      details.primaryVelocity ?? 0;
+                                  final double maxAvailableHeight =
+                                      constraints.maxHeight -
+                                      MediaQuery.of(context).padding.top -
+                                      topBarHeight -
+                                      MediaQuery.of(context).padding.bottom -
+                                      thumbnailStripHeight;
 
-                              double contentHeight = maxAvailableHeight;
-                              final renderBox =
-                                  _textContentKey.currentContext
-                                          ?.findRenderObject()
-                                      as RenderBox?;
-                              if (renderBox != null) {
-                                contentHeight = renderBox.size.height + 10;
-                              }
-                              final double clampedMax = contentHeight.clamp(
-                                GalleryState.minTextPanelHeight,
-                                maxAvailableHeight,
-                              );
+                                  double contentHeight = maxAvailableHeight;
+                                  final renderBox =
+                                      _textContentKey.currentContext
+                                              ?.findRenderObject()
+                                          as RenderBox?;
+                                  if (renderBox != null) {
+                                    contentHeight = renderBox.size.height + 10;
+                                  }
+                                  final double clampedMax = contentHeight.clamp(
+                                    GalleryState.minTextPanelHeight,
+                                    maxAvailableHeight,
+                                  );
 
-                              double target;
-                              if (velocity > 300) {
-                                target = GalleryState.minTextPanelHeight;
-                              } else if (velocity < -300) {
-                                target = clampedMax;
-                              } else if (textPanelHeight <
-                                  GalleryState.minTextPanelHeight + 40) {
-                                target = GalleryState.minTextPanelHeight;
-                              } else {
-                                return;
-                              }
-                              _animateHeightTo(textPanelHeight, target);
-                            },
-                            child: Stack(
-                              children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 50),
-                                  height: textPanelHeight,
-                                  width: double.infinity,
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: horizontalPadding,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.8),
-                                        Colors.transparent,
-                                      ],
-                                      stops: const [0.0, 1.0],
-                                    ),
-                                  ),
-                                  child: SingleChildScrollView(
-                                    physics:
-                                        const NeverScrollableScrollPhysics(),
-                                    child: KeyedSubtree(
-                                      key: _textContentKey,
-                                      child: _buildTextContent(
-                                        currentItem,
-                                        isTablet: isTablet,
+                                  double target;
+                                  if (velocity > 300) {
+                                    target = GalleryState.minTextPanelHeight;
+                                  } else if (velocity < -300) {
+                                    target = clampedMax;
+                                  } else if (textPanelHeight <
+                                      GalleryState.minTextPanelHeight + 40) {
+                                    target = GalleryState.minTextPanelHeight;
+                                  } else {
+                                    return;
+                                  }
+                                  _animateHeightTo(textPanelHeight, target);
+                                },
+                                child: Stack(
+                                  children: [
+                                    AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 50,
+                                      ),
+                                      height: textPanelHeight,
+                                      width: double.infinity,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: horizontalPadding,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                          colors: [
+                                            Colors.black.withValues(alpha: 0.8),
+                                            Colors.transparent,
+                                          ],
+                                          stops: const [0.0, 1.0],
+                                        ),
+                                      ),
+                                      child: SingleChildScrollView(
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
+                                        child: KeyedSubtree(
+                                          key: _textContentKey,
+                                          child: _buildTextContent(
+                                            currentItem,
+                                            isTablet: isTablet,
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                // Subtle gradient at the bottom for better text cut-off
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  child: Container(
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: [
-                                          Colors.transparent,
-                                          Colors.black.withValues(alpha: 0.7),
-                                        ],
+                                    // Subtle gradient at the bottom for better text cut-off
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Container(
+                                        height: 48,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              Colors.black.withValues(
+                                                alpha: 0.7,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                          ],
                         );
                       },
                     ),
@@ -381,6 +427,81 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
     });
 
     _heightAnimController!.forward();
+  }
+
+  Widget _buildSeekbar(Player player) {
+    return Container(
+      key: ValueKey(player),
+      color: Colors.black.withValues(alpha: 0.5),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          StreamBuilder<Duration>(
+            initialData: player.state.position,
+            stream: player.stream.position,
+            builder: (context, snapshot) {
+              final position = snapshot.data ?? Duration.zero;
+              return Text(
+                _formatDuration(position),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              );
+            },
+          ),
+          Expanded(
+            child: StreamBuilder<Duration>(
+              initialData: player.state.position,
+              stream: player.stream.position,
+              builder: (context, posSnapshot) {
+                return StreamBuilder<Duration>(
+                  initialData: player.state.duration,
+                  stream: player.stream.duration,
+                  builder: (context, durSnapshot) {
+                    final position = posSnapshot.data ?? Duration.zero;
+                    final duration = durSnapshot.data ?? Duration.zero;
+
+                    double max = duration.inMilliseconds.toDouble();
+                    double val = position.inMilliseconds.toDouble();
+                    if (max <= 0) max = 1.0;
+                    if (val < 0) val = 0.0;
+                    if (val > max) val = max;
+
+                    return Slider(
+                      value: val,
+                      max: max,
+                      activeColor: Colors.white,
+                      inactiveColor: Colors.white30,
+                      onChanged: (value) {
+                        player.seek(Duration(milliseconds: value.toInt()));
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          StreamBuilder<Duration>(
+            initialData: player.state.duration,
+            stream: player.stream.duration,
+            builder: (context, snapshot) {
+              final duration = snapshot.data ?? Duration.zero;
+              return Text(
+                _formatDuration(duration),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    if (d.inHours > 0) {
+      return '${d.inHours}:$minutes:$seconds';
+    }
+    return '$minutes:$seconds';
   }
 
   Widget _buildTextContent(
