@@ -216,7 +216,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         final bool hasSeekbar =
                             currentItem.type == GalleryItemType.video ||
                             currentItem.type == GalleryItemType.audio;
-                        final double seekbarHeight = 40.0;
+                        const double seekbarHeight = 40.0;
 
                         final double textBottomOffset =
                             (state.isUIVisible && !state.isSliding)
@@ -244,8 +244,9 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                                 child: ValueListenableBuilder<Player?>(
                                   valueListenable: activePlayerNotifier,
                                   builder: (context, player, child) {
-                                    if (player == null)
+                                    if (player == null) {
                                       return const SizedBox.shrink();
+                                    }
                                     return _buildSeekbar(player);
                                   },
                                 ),
