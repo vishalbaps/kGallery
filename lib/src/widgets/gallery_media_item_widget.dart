@@ -4,14 +4,26 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 
+/// Internal widget for displaying an individual media item (Video or Audio).
+///
+/// Handles initialization of [Player], connectivity checks, and playback logic.
 class GalleryMediaItemWidget extends StatefulWidget {
+  /// The media item to display.
   final GalleryItem item;
+
+  /// The index of this item in the gallery.
   final int index;
-  final ValueNotifier<Player?> activePlayerNotifier;
+
+  /// Notifier to communicate the active [Player] to the parent gallery.
+  /// Whether this item represents audio-only content.
   final bool isAudio;
+
+  /// Custom message shown when no internet is detected.
+  final String? noInternetMessage;
 
   const GalleryMediaItemWidget({
     super.key,
@@ -19,6 +31,7 @@ class GalleryMediaItemWidget extends StatefulWidget {
     required this.index,
     required this.activePlayerNotifier,
     this.isAudio = false,
+    this.noInternetMessage,
   });
 
   @override
@@ -74,10 +87,39 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
         final state = context.read<GalleryBloc>().state;
         if (state.currentIndex == widget.index) {
           widget.activePlayerNotifier.value = player;
-          player.play();
+          _playWithConnectivityCheck();
         }
       }
     });
+  }
+
+  Future<void> _playWithConnectivityCheck() async {
+    if (!widget.item.url.startsWith('http')) {
+      player.play();
+      return;
+    }
+
+    final List<ConnectivityResult> connectivityResult =
+        await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.noInternetMessage ??
+                  'No internet connection. Please check your network.',
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (mounted &&
+          context.read<GalleryBloc>().state.currentIndex == widget.index) {
+        player.play();
+      }
+    }
   }
 
   @override
@@ -101,7 +143,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
           listener: (context, state) {
             if (state.currentIndex == widget.index) {
               widget.activePlayerNotifier.value = player;
-              player.play();
+              _playWithConnectivityCheck();
             } else {
               player.pause();
               if (widget.activePlayerNotifier.value == player) {
@@ -214,7 +256,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
                                     if (isPlaying) {
                                       player.pause();
                                     } else {
-                                      player.play();
+                                      _playWithConnectivityCheck();
                                     }
                                   },
                                   child: Padding(

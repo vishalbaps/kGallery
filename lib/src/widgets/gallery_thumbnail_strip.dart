@@ -5,14 +5,20 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:extended_image/extended_image.dart';
 import '../bloc/gallery_bloc.dart';
 
+/// Internal widget for displaying the scrollable thumbnail strip.
 class GalleryThumbnailStrip extends StatefulWidget {
-  final bool isHapticEnable;
+  /// Whether haptic feedback is enabled.
+  final bool enableHapticFeedback;
+
+  /// Controller for the main page view to sync scrolling.
   final ExtendedPageController pageController;
+
+  /// Custom loading widget for thumbnails.
   final Widget? thumbProgressWidget;
 
   const GalleryThumbnailStrip({
     super.key,
-    required this.isHapticEnable,
+    required this.enableHapticFeedback,
     required this.pageController,
     this.thumbProgressWidget,
   });
@@ -138,7 +144,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                           centerIndex < state.items.length) {
                         if (_lastHapticIndex != centerIndex) {
                           _lastHapticIndex = centerIndex;
-                          if (widget.isHapticEnable) {
+                          if (widget.enableHapticFeedback) {
                             HapticFeedback.selectionClick();
                           }
                           widget.pageController.jumpToPage(centerIndex);
@@ -165,7 +171,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                       final isSelected = index == state.currentIndex;
                       return GestureDetector(
                         onTap: () {
-                          if (widget.isHapticEnable) {
+                          if (widget.enableHapticFeedback) {
                             HapticFeedback.lightImpact();
                           }
                           widget.pageController.animateToPage(

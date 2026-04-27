@@ -1,29 +1,29 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:media_kit/media_kit.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 import 'gallery_media_item_widget.dart';
 
-class GalleryImageViewer extends StatefulWidget {
-  final ExtendedPageController pageController;
-  final Widget? progressWidget;
-  final bool isZoomEnable;
-  final bool isSwipeToDismiss;
-  final GlobalKey<ExtendedImageSlidePageState> slidePageKey;
-  final ValueNotifier<Player?> activePlayerNotifier;
+/// Internal widget for displaying the main media content with gestures.
+  /// Callback for when the viewer is closed.
+  final void Function(int currentIndex)? onClose;
+
+  /// Custom message shown when no internet is detected for remote media.
+  final String? noInternetMessage;
 
   const GalleryImageViewer({
     super.key,
     required this.pageController,
     this.progressWidget,
-    required this.isZoomEnable,
-    required this.isSwipeToDismiss,
+    required this.enableZoom,
+    required this.enableSwipeToDismiss,
     required this.slidePageKey,
     required this.activePlayerNotifier,
+    this.onClose,
+    this.noInternetMessage,
   });
 
   @override
@@ -90,18 +90,16 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
               if (_isPinching) {
                 _isPinching = false;
                 // Re-evaluate UI visibility after a pinch gesture ends.
+                final bloc = context.read<GalleryBloc>();
                 Future.delayed(const Duration(milliseconds: 50), () {
                   if (mounted) {
-                    final currentIndex = context
-                        .read<GalleryBloc>()
-                        .state
-                        .currentIndex;
+                    final currentIndex = bloc.state.currentIndex;
                     final gestureState =
                         _gestureKeys[currentIndex]?.currentState;
                     final scale =
                         gestureState?.gestureDetails?.totalScale ?? 1.0;
                     if (scale <= 1.0) {
-                      context.read<GalleryBloc>().add(
+                      bloc.add(
                         GalleryToggleUI(isVisible: true),
                       );
                     }
@@ -146,17 +144,21 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                 return;
               }
 
-              if (widget.isSwipeToDismiss &&
+              if (widget.enableSwipeToDismiss &&
                   dyVertical > 150 &&
                   time < 400 &&
                   dyAbs > dx * 3.0 &&
                   dx < 50) {
-                if (mounted && context.canPop()) {
+                if (mounted) {
                   final currentIndex = context
                       .read<GalleryBloc>()
                       .state
                       .currentIndex;
-                  context.pop(currentIndex);
+                  if (widget.onClose != null) {
+                    widget.onClose!(currentIndex);
+                  } else {
+                    Navigator.of(context).maybePop(currentIndex);
+                  }
                 }
               }
             }
@@ -195,6 +197,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                     index: index,
                     activePlayerNotifier: widget.activePlayerNotifier,
                     isAudio: item.type == GalleryItemType.audio,
+                    noInternetMessage: widget.noInternetMessage,
                   );
                 }
 
@@ -207,10 +210,10 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                   item.url,
                   extendedImageGestureKey: gestureKey,
                   fit: BoxFit.contain,
-                  mode: widget.isZoomEnable
+                  mode: widget.enableZoom
                       ? ExtendedImageMode.gesture
                       : ExtendedImageMode.none,
-                  enableSlideOutPage: widget.isSwipeToDismiss,
+                  enableSlideOutPage: widget.enableSwipeToDismiss,
                   loadStateChanged: (state) {
                     if (state.extendedImageLoadState == LoadState.loading) {
                       return widget.progressWidget ??
@@ -235,7 +238,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                     );
                   },
                   onDoubleTap: (ExtendedImageGestureState state) {
-                    if (!widget.isZoomEnable) return;
+                    if (!widget.enableZoom) return;
 
                     var pointerDownPosition = state.pointerDownPosition;
                     var begin = state.gestureDetails?.totalScale ?? 1.0;
