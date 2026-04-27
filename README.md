@@ -8,6 +8,21 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ![kGallery Banner](https://raw.githubusercontent.com/vishalbaps/kGallery/main/screenshots/kgallery_banner.png)
 
+## 📸 Demo
+
+<p align="center">
+  <img src="screenshots/gallery_view.png" width="30%" alt="Gallery View" />
+  <img src="screenshots/simulator_demo.png" width="30%" alt="Simulator Demo" />
+</p>
+
+### 📺 Video Preview
+
+<p align="center">
+  <video src="screenshots/demo.mp4" width="100%" controls autoplay loop muted>
+    Your browser does not support the video tag.
+  </video>
+</p>
+
 ## ✨ Features
 
 - 🖼️ **Multi-Media Support**: Seamlessly view images, watch videos, and listen to audio.
