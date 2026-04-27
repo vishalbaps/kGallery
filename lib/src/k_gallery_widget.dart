@@ -37,6 +37,7 @@ class KGallery extends StatefulWidget {
   /// Custom widget shown while thumbnail images are loading.
   /// Defaults to a shimmer effect.
   final Widget? thumbProgressWidget;
+
   /// Whether pinch-to-zoom and double-tap zoom are enabled for images.
   /// Defaults to `true`.
   final bool enableZoom;
@@ -79,8 +80,7 @@ class KGallery extends StatefulWidget {
     BuildContext,
     int currentIndex,
     List<GalleryItem> items,
-  )?
-  actionMenuBuilder;
+  )? actionMenuBuilder;
 
   /// Creates a [KGallery] widget.
   ///
@@ -102,11 +102,11 @@ class KGallery extends StatefulWidget {
     this.onClose,
     this.theme,
     this.actionMenuBuilder,
-  }) : assert(contentList.length > 0, 'contentList must not be empty'),
-       assert(
-         initialIndex >= 0 && initialIndex < contentList.length,
-         'initialIndex must be within contentList bounds',
-       );
+  })  : assert(contentList.length > 0, 'contentList must not be empty'),
+        assert(
+          initialIndex >= 0 && initialIndex < contentList.length,
+          'initialIndex must be within contentList bounds',
+        );
 
   /// Initializes MediaKit for video/audio playback.
   ///
@@ -129,8 +129,7 @@ class KGallery extends StatefulWidget {
 
 class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   late ExtendedPageController _pageController;
-  final GlobalKey<ExtendedImageSlidePageState> _slidePageKey =
-      GlobalKey<ExtendedImageSlidePageState>();
+  final GlobalKey<ExtendedImageSlidePageState> _slidePageKey = GlobalKey<ExtendedImageSlidePageState>();
   late GalleryBloc _galleryBloc;
   final GlobalKey _textContentKey = GlobalKey();
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
@@ -152,13 +151,11 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
     }
 
     _effectiveProgressWidget =
-        widget.progressWidget ??
-        const Center(child: CircularProgressIndicator(color: Colors.white));
+        widget.progressWidget ?? const Center(child: CircularProgressIndicator(color: Colors.white));
 
     _effectiveTheme = widget.theme ?? GalleryTheme.dark();
 
-    _effectiveThumbProgressWidget =
-        widget.thumbProgressWidget ??
+    _effectiveThumbProgressWidget = widget.thumbProgressWidget ??
         Shimmer.fromColors(
           baseColor: Colors.grey[800]!,
           highlightColor: Colors.grey[600]!,
@@ -189,62 +186,68 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
         final double topBarHeight = isTablet ? 80 : 56;
         final double horizontalPadding = isTablet ? 32 : 16;
 
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.light,
-          child: BlocProvider.value(
-            value: _galleryBloc,
-            child: BlocListener<GalleryBloc, GalleryState>(
-              listenWhen: (previous, current) =>
-                  previous.currentIndex != current.currentIndex,
-              listener: (context, state) {
-                widget.onIndexChanged?.call(state.currentIndex);
-              },
-              child: Scaffold(
-                backgroundColor: Colors.transparent,
-                body: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    GalleryImageViewer(
-                      pageController: _pageController,
-                      progressWidget: _effectiveProgressWidget,
-                      enableZoom: widget.enableZoom,
-                      enableSwipeToDismiss: widget.enableSwipeToDismiss,
-                      slidePageKey: _slidePageKey,
-                      activePlayerNotifier: activePlayerNotifier,
-                      onClose: widget.onClose,
-                      noInternetMessage: widget.noInternetMessage ??
-                          _effectiveTheme.noInternetMessage,
-                    ),
+        return PopScope(
+          canPop: true,
+          onPopInvokedWithResult: (didPop, _) {
+            if (didPop) {
+              widget.onClose?.call(_galleryBloc.state.currentIndex);
+            }
+          },
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.light,
+            child: BlocProvider.value(
+              value: _galleryBloc,
+              child: BlocListener<GalleryBloc, GalleryState>(
+                listenWhen: (previous, current) => previous.currentIndex != current.currentIndex,
+                listener: (context, state) {
+                  widget.onIndexChanged?.call(state.currentIndex);
+                },
+                child: Scaffold(
+                  backgroundColor: Colors.transparent,
+                  body: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      GalleryImageViewer(
+                        pageController: _pageController,
+                        progressWidget: _effectiveProgressWidget,
+                        enableZoom: widget.enableZoom,
+                        enableSwipeToDismiss: widget.enableSwipeToDismiss,
+                        slidePageKey: _slidePageKey,
+                        activePlayerNotifier: activePlayerNotifier,
+                        onClose: widget.onClose,
+                        noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
+                      ),
 
-                    _GalleryTopBar(
-                      topBarHeight: topBarHeight,
-                      horizontalPadding: horizontalPadding,
-                      leading: widget.leading,
-                      title: widget.title,
-                      actionMenuBuilder: widget.actionMenuBuilder,
-                      onClose: widget.onClose,
-                      theme: _effectiveTheme,
-                    ),
+                      _GalleryTopBar(
+                        topBarHeight: topBarHeight,
+                        horizontalPadding: horizontalPadding,
+                        leading: widget.leading,
+                        title: widget.title,
+                        actionMenuBuilder: widget.actionMenuBuilder,
+                        onClose: widget.onClose,
+                        theme: _effectiveTheme,
+                      ),
 
-                    _GalleryOverlayLayer(
-                      constraints: constraints,
-                      pageController: _pageController,
-                      thumbnailStripHeight: thumbnailStripHeight,
-                      topBarHeight: topBarHeight,
-                      horizontalPadding: horizontalPadding,
-                      textContentKey: _textContentKey,
-                      activePlayerNotifier: activePlayerNotifier,
-                      theme: _effectiveTheme,
-                      animateHeightTo: _animateHeightTo,
-                    ),
+                      _GalleryOverlayLayer(
+                        constraints: constraints,
+                        pageController: _pageController,
+                        thumbnailStripHeight: thumbnailStripHeight,
+                        topBarHeight: topBarHeight,
+                        horizontalPadding: horizontalPadding,
+                        textContentKey: _textContentKey,
+                        activePlayerNotifier: activePlayerNotifier,
+                        theme: _effectiveTheme,
+                        animateHeightTo: _animateHeightTo,
+                      ),
 
-                    // Adaptive Thumbnail Strip (Persistent on bottom)
-                    GalleryThumbnailStrip(
-                      enableHapticFeedback: widget.enableHapticFeedback,
-                      pageController: _pageController,
-                      thumbProgressWidget: _effectiveThumbProgressWidget,
-                    ),
-                  ],
+                      // Adaptive Thumbnail Strip (Persistent on bottom)
+                      GalleryThumbnailStrip(
+                        enableHapticFeedback: widget.enableHapticFeedback,
+                        pageController: _pageController,
+                        thumbProgressWidget: _effectiveThumbProgressWidget,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -306,11 +309,7 @@ class _GalleryTopBar extends StatelessWidget {
         final Widget leadingWidget = IconButton(
           icon: leading ?? const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            if (onClose != null) {
-              onClose!(state.currentIndex);
-            } else {
-              Navigator.of(context).maybePop(state.currentIndex);
-            }
+            Navigator.of(context).maybePop(state.currentIndex);
           },
         );
 
@@ -353,10 +352,7 @@ class _GalleryTopBar extends StatelessWidget {
                   children: [
                     leadingWidget,
                     Expanded(child: Center(child: titleWidget)),
-                    if (customActions != null)
-                      customActions
-                    else
-                      SizedBox(width: isTablet ? 64 : 48),
+                    if (customActions != null) customActions else SizedBox(width: isTablet ? 64 : 48),
                   ],
                 ),
               ),
@@ -395,28 +391,20 @@ class _GalleryOverlayLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
-        final currentItem =
-            state.items.isNotEmpty ? state.items[state.currentIndex] : null;
-        if (currentItem == null ||
-            (currentItem.title == null && currentItem.description == null)) {
+        final currentItem = state.items.isNotEmpty ? state.items[state.currentIndex] : null;
+        if (currentItem == null || (currentItem.title == null && currentItem.description == null)) {
           return const SizedBox.shrink();
         }
 
         final double textPanelHeight = state.textPanelHeight;
-        final bool hasSeekbar =
-            currentItem.type == GalleryItemType.video ||
-            currentItem.type == GalleryItemType.audio;
+        final bool hasSeekbar = currentItem.type == GalleryItemType.video || currentItem.type == GalleryItemType.audio;
         const double seekbarHeight = 40.0;
 
-        final double textBottomOffset =
-            (state.isUIVisible && !state.isSliding)
-            ? MediaQuery.of(context).padding.bottom +
-                  thumbnailStripHeight +
-                  (hasSeekbar ? seekbarHeight : 0.0)
+        final double textBottomOffset = (state.isUIVisible && !state.isSliding)
+            ? MediaQuery.of(context).padding.bottom + thumbnailStripHeight + (hasSeekbar ? seekbarHeight : 0.0)
             : -500;
 
-        final double seekbarBottomOffset =
-            (state.isUIVisible && !state.isSliding)
+        final double seekbarBottomOffset = (state.isUIVisible && !state.isSliding)
             ? MediaQuery.of(context).padding.bottom + thumbnailStripHeight
             : -500;
 
@@ -493,16 +481,14 @@ class _GalleryTextPanel extends StatelessWidget {
     return GestureDetector(
       onVerticalDragUpdate: (details) {
         double newHeight = textPanelHeight - (details.primaryDelta ?? 0);
-        final double maxAvailableHeight =
-            constraints.maxHeight -
+        final double maxAvailableHeight = constraints.maxHeight -
             MediaQuery.of(context).padding.top -
             topBarHeight -
             MediaQuery.of(context).padding.bottom -
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox =
-            textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -516,21 +502,19 @@ class _GalleryTextPanel extends StatelessWidget {
           clampedMax,
         );
         context.read<GalleryBloc>().add(
-          GalleryTextPanelHeightChanged(newHeight),
-        );
+              GalleryTextPanelHeightChanged(newHeight),
+            );
       },
       onVerticalDragEnd: (details) {
         final double velocity = details.primaryVelocity ?? 0;
-        final double maxAvailableHeight =
-            constraints.maxHeight -
+        final double maxAvailableHeight = constraints.maxHeight -
             MediaQuery.of(context).padding.top -
             topBarHeight -
             MediaQuery.of(context).padding.bottom -
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox =
-            textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
