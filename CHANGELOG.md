@@ -1,3 +1,8 @@
+## 1.0.1
+
+- Documentation: Updated README with demo video and screenshots for better project visibility.
+- Fix: Use absolute URLs for documentation assets to ensure cross-platform compatibility.
+
 ## 1.0.0
 
 ### Features

@@ -39,7 +39,7 @@ Add `k_gallery` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  k_gallery: ^1.0.0
+  k_gallery: ^1.0.1
 ```
 
 ### 2. Platform Setup (Important!)
