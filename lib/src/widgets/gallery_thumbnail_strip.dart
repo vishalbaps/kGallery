@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:extended_image/extended_image.dart';
+import 'package:k_gallery/k_gallery.dart';
 import '../bloc/gallery_bloc.dart';
 
 /// Internal widget for displaying the scrollable thumbnail strip.
@@ -109,8 +110,8 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
           bottom: (state.isUIVisible && !state.isSliding)
               ? 0
               : -(dimensions.height +
-                    MediaQuery.of(context).padding.bottom +
-                    20),
+                  MediaQuery.of(context).padding.bottom +
+                  20),
           left: 0,
           right: 0,
           height: dimensions.height + MediaQuery.of(context).padding.bottom,
@@ -149,8 +150,8 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                           }
                           widget.pageController.jumpToPage(centerIndex);
                           context.read<GalleryBloc>().add(
-                            GalleryIndexChanged(centerIndex),
-                          );
+                                GalleryIndexChanged(centerIndex),
+                              );
                         }
                       }
                     }
@@ -160,8 +161,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                     controller: _scrollController,
                     scrollDirection: Axis.horizontal,
                     padding: EdgeInsets.symmetric(
-                      horizontal:
-                          (screenWidth -
+                      horizontal: (screenWidth -
                               dimensions.unselectedSize -
                               dimensions.spacing) /
                           2,
@@ -180,8 +180,8 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                             curve: Curves.easeInOut,
                           );
                           context.read<GalleryBloc>().add(
-                            GalleryIndexChanged(index),
-                          );
+                                GalleryIndexChanged(index),
+                              );
                         },
                         child: SizedBox(
                           width: dimensions.unselectedSize + dimensions.spacing,
@@ -207,19 +207,43 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                                 borderRadius: BorderRadius.circular(
                                   dimensions.unselectedSize * 0.15,
                                 ),
-                                child: ExtendedImage.network(
-                                  state.items[index].thumbnailUrl ??
-                                      state.items[index].url,
-                                  fit: BoxFit.cover,
-                                  cache: true,
-                                  loadStateChanged: (extendedImageState) {
-                                    if (extendedImageState
-                                            .extendedImageLoadState ==
-                                        LoadState.loading) {
-                                      return widget.thumbProgressWidget;
-                                    }
-                                    return null;
-                                  },
+                                child: Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    ExtendedImage.network(
+                                      state.items[index].thumbnailUrl ??
+                                          state.items[index].url,
+                                      fit: BoxFit.cover,
+                                      cache: true,
+                                      loadStateChanged: (extendedImageState) {
+                                        if (extendedImageState
+                                                .extendedImageLoadState ==
+                                            LoadState.loading) {
+                                          return widget.thumbProgressWidget;
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    if (state.items[index].type !=
+                                        GalleryItemType.image)
+                                      Positioned(
+                                        left: 4,
+                                        bottom: 4,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(1),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                Colors.black.withOpacity(0.5),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.play_arrow,
+                                            size: 10,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ),

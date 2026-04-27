@@ -64,7 +64,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           description:
               'A large and lovable rabbit deals with three bullying rodents. This demonstrates the MediaKit integration.',
           thumbnailUrl:
-              'https://storage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+              'https://i.vimeocdn.com/video/797382244-0106ae13e902e09d0f02d8f404fa80581f38d1b8b7846b3f8e87ef391ffb8c99-d?f=webp&region=us',
         );
       }
       if (index == 1) {
@@ -74,7 +74,8 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           title: 'SoundHelix Song 1 (Audio)',
           description:
               'A long audio track to demonstrate the audio player interface.',
-          thumbnailUrl: 'https://loremflickr.com/600/800/music?lock=999',
+          thumbnailUrl:
+              'https://loremflickr.com/cache/resized/4847_32563783648_56c36bab8f_h_600_800_nofilter.jpg',
         );
       }
 
@@ -142,41 +143,65 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
             },
             child: Hero(
               tag: item.url,
-              child:
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
                   (item.type != GalleryItemType.image &&
-                      item.thumbnailUrl == null)
-                  ? Container(
-                      color: Colors.grey[900],
-                      alignment: Alignment.center,
-                      child: Icon(
-                        item.type == GalleryItemType.video
-                            ? Icons.videocam
-                            : Icons.audiotrack,
-                        size: 32,
-                        color: Colors.white54,
-                      ),
-                    )
-                  : CachedNetworkImage(
-                      imageUrl: item.thumbnailUrl ?? item.url,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        color: Colors.grey[900],
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Colors.grey[900],
-                        alignment: Alignment.center,
-                        child: Icon(
-                          item.type == GalleryItemType.video
-                              ? Icons.videocam
-                              : item.type == GalleryItemType.audio
-                              ? Icons.audiotrack
-                              : Icons.image_not_supported,
-                          size: 32,
-                          color: Colors.white54,
+                          item.thumbnailUrl == null)
+                      ? Container(
+                          color: Colors.grey[900],
+                          alignment: Alignment.center,
+                          child: Icon(
+                            item.type == GalleryItemType.video
+                                ? Icons.videocam
+                                : Icons.audiotrack,
+                            size: 32,
+                            color: Colors.white54,
+                          ),
+                        )
+                      : CachedNetworkImage(
+                          imageUrl: item.thumbnailUrl ?? item.url,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[900],
+                            alignment: Alignment.center,
+                            child: Icon(
+                              item.type == GalleryItemType.video
+                                  ? Icons.videocam
+                                  : item.type == GalleryItemType.audio
+                                  ? Icons.audiotrack
+                                  : Icons.image_not_supported,
+                              size: 32,
+                              color: Colors.white54,
+                            ),
+                          ),
+                        ),
+                  if (item.type != GalleryItemType.image &&
+                      item.thumbnailUrl != null)
+                    Positioned(
+                      left: 6,
+                      bottom: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.play_arrow,
+                          size: 14,
+                          color: Colors.white,
                         ),
                       ),
                     ),
+                ],
+              ),
             ),
           );
         },

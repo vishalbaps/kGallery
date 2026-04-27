@@ -93,8 +93,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
               _isPinching = true;
               if (context.read<GalleryBloc>().state.isUIVisible) {
                 context.read<GalleryBloc>().add(
-                  GalleryToggleUI(isVisible: false),
-                );
+                      GalleryToggleUI(isVisible: false),
+                    );
               }
             } else if (_pointersCount == 1) {
               _singleTapTimer?.cancel();
@@ -136,8 +136,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
               if (widget.slidePageKey.currentState?.isSliding ?? false) return;
 
               // Detect if this is a second tap for double-tap zoom handling.
-              bool isSecondTap =
-                  _lastTapEndTime != null &&
+              bool isSecondTap = _lastTapEndTime != null &&
                   now.difference(_lastTapEndTime!).inMilliseconds < 300;
               _lastTapEndTime = now;
 
@@ -169,10 +168,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                   dyAbs > dx * 3.0 &&
                   dx < 50) {
                 if (mounted) {
-                  final currentIndex = context
-                      .read<GalleryBloc>()
-                      .state
-                      .currentIndex;
+                  final currentIndex =
+                      context.read<GalleryBloc>().state.currentIndex;
                   if (widget.onClose != null) {
                     widget.onClose!(currentIndex);
                   } else {
@@ -290,12 +287,12 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
 
                     if (end == 1.0) {
                       context.read<GalleryBloc>().add(
-                        GalleryToggleUI(isVisible: true),
-                      );
+                            GalleryToggleUI(isVisible: true),
+                          );
                     } else {
                       context.read<GalleryBloc>().add(
-                        GalleryToggleUI(isVisible: false),
-                      );
+                            GalleryToggleUI(isVisible: false),
+                          );
                     }
                   },
                   heroBuilderForSlidingPage: (Widget result) {
