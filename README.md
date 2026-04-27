@@ -1,12 +1,12 @@
 # kGallery 🖼️
 
 [![Pub Version](https://img.shields.io/pub/v/k_gallery)](https://pub.dev/packages/k_gallery)
-[![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/license-MIT-purple.svg)](https://github.com/vishalbaps/kGallery/blob/main/LICENSE)
 [![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=flat&logo=Flutter&logoColor=white)](https://flutter.dev)
 
 A high-performance, premium, and fully-featured media gallery viewer for Flutter. Inspired by the sleek experience of Telegram, `kGallery` supports images, videos, and audio content with smooth transitions and intuitive gestures.
 
-![kGallery Banner](https://raw.githubusercontent.com/user/k_gallery/main/screenshots/kgallery_banner.png)
+![kGallery Banner](https://raw.githubusercontent.com/vishalbaps/kGallery/main/screenshots/kgallery_banner.png)
 
 ## ✨ Features
 
