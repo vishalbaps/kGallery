@@ -32,6 +32,11 @@ class KGallery extends StatefulWidget {
 
   /// Custom widget shown while media items are loading.
   /// Defaults to a white [CircularProgressIndicator].
+  final Widget? progressWidget;
+
+  /// Custom widget shown while thumbnail images are loading.
+  /// Defaults to a shimmer effect.
+  final Widget? thumbProgressWidget;
   /// Whether pinch-to-zoom and double-tap zoom are enabled for images.
   /// Defaults to `true`.
   final bool enableZoom;
@@ -705,5 +710,4 @@ class _GallerySeekBar extends StatelessWidget {
     }
     return '$minutes:$seconds';
   }
-}
 }

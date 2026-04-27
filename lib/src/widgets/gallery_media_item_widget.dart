@@ -19,6 +19,8 @@ class GalleryMediaItemWidget extends StatefulWidget {
   final int index;
 
   /// Notifier to communicate the active [Player] to the parent gallery.
+  final ValueNotifier<Player?> activePlayerNotifier;
+
   /// Whether this item represents audio-only content.
   final bool isAudio;
 

@@ -8,6 +8,25 @@ import '../models/gallery_item.dart';
 import 'gallery_media_item_widget.dart';
 
 /// Internal widget for displaying the main media content with gestures.
+class GalleryImageViewer extends StatefulWidget {
+  /// Controller for the page view.
+  final ExtendedPageController pageController;
+
+  /// Custom loading widget.
+  final Widget? progressWidget;
+
+  /// Whether zoom gestures are enabled.
+  final bool enableZoom;
+
+  /// Whether swipe-to-dismiss is enabled.
+  final bool enableSwipeToDismiss;
+
+  /// Key to control the slide page state.
+  final GlobalKey<ExtendedImageSlidePageState> slidePageKey;
+
+  /// Notifier for the currently active media player.
+  final ValueNotifier<Player?> activePlayerNotifier;
+
   /// Callback for when the viewer is closed.
   final void Function(int currentIndex)? onClose;
 
