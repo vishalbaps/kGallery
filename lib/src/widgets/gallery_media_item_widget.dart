@@ -21,6 +21,9 @@ class GalleryMediaItemWidget extends StatefulWidget {
   /// Notifier to communicate the active [Player] to the parent gallery.
   final ValueNotifier<Player?> activePlayerNotifier;
 
+  /// The bloc managing the gallery state.
+  final GalleryBloc galleryBloc;
+
   /// Whether this item represents audio-only content.
   final bool isAudio;
 
@@ -32,6 +35,7 @@ class GalleryMediaItemWidget extends StatefulWidget {
     required this.item,
     required this.index,
     required this.activePlayerNotifier,
+    required this.galleryBloc,
     this.isAudio = false,
     this.noInternetMessage,
   });
@@ -50,9 +54,9 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     _hideUITimer?.cancel();
     _hideUITimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
-        final state = context.read<GalleryBloc>().state;
+        final state = widget.galleryBloc.state;
         if (state.isUIVisible && state.currentIndex == widget.index) {
-          context.read<GalleryBloc>().add(GalleryToggleUI(isVisible: false));
+          widget.galleryBloc.add(GalleryToggleUI(isVisible: false));
         }
       }
     });
@@ -72,7 +76,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
 
     _playingSubscription = player.stream.playing.listen((isPlaying) {
       if (mounted) {
-        final state = context.read<GalleryBloc>().state;
+        final state = widget.galleryBloc.state;
         if (isPlaying &&
             state.isUIVisible &&
             state.currentIndex == widget.index) {
@@ -86,7 +90,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     // Check if we are initially the active item
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final state = context.read<GalleryBloc>().state;
+        final state = widget.galleryBloc.state;
         if (state.currentIndex == widget.index) {
           widget.activePlayerNotifier.value = player;
           _playWithConnectivityCheck();
@@ -117,8 +121,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
         );
       }
     } else {
-      if (mounted &&
-          context.read<GalleryBloc>().state.currentIndex == widget.index) {
+      if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
         player.play();
       }
     }
@@ -129,7 +132,12 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     _hideUITimer?.cancel();
     _playingSubscription?.cancel();
     if (widget.activePlayerNotifier.value == player) {
-      widget.activePlayerNotifier.value = null;
+      final notifier = widget.activePlayerNotifier;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (notifier.value == player) {
+          notifier.value = null;
+        }
+      });
     }
     player.dispose();
     super.dispose();
@@ -140,6 +148,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     return MultiBlocListener(
       listeners: [
         BlocListener<GalleryBloc, GalleryState>(
+          bloc: widget.galleryBloc,
           listenWhen: (previous, current) =>
               previous.currentIndex != current.currentIndex,
           listener: (context, state) {
@@ -155,6 +164,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
           },
         ),
         BlocListener<GalleryBloc, GalleryState>(
+          bloc: widget.galleryBloc,
           listenWhen: (previous, current) =>
               previous.isUIVisible != current.isUIVisible,
           listener: (context, state) {
@@ -197,7 +207,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () {
-                final bloc = context.read<GalleryBloc>();
+                final bloc = widget.galleryBloc;
                 bloc.add(GalleryToggleUI(isVisible: !bloc.state.isUIVisible));
               },
               child: const SizedBox.expand(),
@@ -232,6 +242,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
 
                     // Play/Pause button
                     BlocBuilder<GalleryBloc, GalleryState>(
+                      bloc: widget.galleryBloc,
                       buildWhen: (previous, current) =>
                           previous.isUIVisible != current.isUIVisible,
                       builder: (context, galleryState) {

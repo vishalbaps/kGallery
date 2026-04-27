@@ -208,13 +208,25 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
 
                 if (item.type == GalleryItemType.video ||
                     item.type == GalleryItemType.audio) {
-                  return GalleryMediaItemWidget(
+                  final mediaChild = GalleryMediaItemWidget(
                     item: item,
                     index: index,
                     activePlayerNotifier: widget.activePlayerNotifier,
+                    galleryBloc: context.read<GalleryBloc>(),
                     isAudio: item.type == GalleryItemType.audio,
                     noInternetMessage: widget.noInternetMessage,
                   );
+
+                  if (widget.enableSwipeToDismiss) {
+                    return ExtendedImageSlidePageHandler(
+                      heroBuilderForSlidingPage: (Widget result) {
+                        return Hero(tag: item.url, child: result);
+                      },
+                      child: mediaChild,
+                    );
+                  }
+
+                  return mediaChild;
                 }
 
                 final gestureKey = _gestureKeys.putIfAbsent(
