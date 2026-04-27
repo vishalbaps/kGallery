@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:k_gallery/k_gallery.dart';
-import 'k_gallery_screen.dart';
+import 'gallery_demo_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize the gallery engine (required for video/audio)
+  KGallery.ensureInitialized();
+  
   runApp(const MyApp());
 }
 
 final GoRouter _router = GoRouter(
-  initialLocation: KGalleryScreen.path,
+  initialLocation: DemoGalleryScreen.path,
   routes: [
     GoRoute(
-      path: KGalleryScreen.path,
-      builder: (context, state) => const KGalleryScreen(),
+      path: DemoGalleryScreen.path,
+      builder: (context, state) => const DemoGalleryScreen(),
     ),
     GoRoute(
       path: KGalleryDetailScreen.id,
