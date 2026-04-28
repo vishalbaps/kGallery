@@ -5,10 +5,7 @@ import 'gallery_demo_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize the gallery engine (required for video/audio)
-  KGallery.ensureInitialized();
-  
+
   runApp(const MyApp());
 }
 
