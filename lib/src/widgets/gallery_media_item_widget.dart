@@ -73,18 +73,14 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
   @override
   void initState() {
     super.initState();
-    if (widget.galleryBloc.state.currentIndex == widget.index) {
-      _activatePlayer();
-    } else {
-      // Fallback for the case where the widget is built in the same frame
-      // as onPageChanged fires (swipe settle race). By post-frame the state
-      // is stable, so we can safely check and activate if needed.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
-          _activatePlayer();
-        }
-      });
-    }
+    // Always defer to post-frame: _activatePlayer sets activePlayerNotifier.value,
+    // which would notify ValueListenableBuilder and call setState during the build
+    // phase if invoked synchronously from initState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
+        _activatePlayer();
+      }
+    });
   }
 
   void _activatePlayer() {
