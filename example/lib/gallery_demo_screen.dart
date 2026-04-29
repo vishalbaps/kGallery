@@ -58,6 +58,18 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
       if (index == 0) {
         return const GalleryItem(
           url:
+              'https://videos.pexels.com/video-files/6896062/6896062-hd_720_1280_30fps.mp4',
+          type: GalleryItemType.video,
+          title: 'Forest Stream (Vertical)',
+          description:
+              'A beautiful vertical video of a forest stream to test gallery behavior.',
+          thumbnailUrl:
+              'https://images.pexels.com/videos/7098293/pexels-photo-7098293.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+        );
+      }
+      if (index == 1) {
+        return const GalleryItem(
+          url:
               'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
           type: GalleryItemType.video,
           title: 'Big Buck Bunny (Video)',
@@ -67,7 +79,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
               'https://i.vimeocdn.com/video/797382244-0106ae13e902e09d0f02d8f404fa80581f38d1b8b7846b3f8e87ef391ffb8c99-d?f=webp&region=us',
         );
       }
-      if (index == 1) {
+      if (index == 2) {
         return const GalleryItem(
           url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
           type: GalleryItemType.audio,
@@ -75,7 +87,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           description:
               'A long audio track to demonstrate the audio player interface.',
           thumbnailUrl:
-              'https://loremflickr.com/cache/resized/4847_32563783648_56c36bab8f_h_600_800_nofilter.jpg',
+              'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=800&fit=crop',
         );
       }
 
@@ -190,7 +202,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(

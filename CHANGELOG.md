@@ -1,3 +1,7 @@
+## 1.0.2
+
+- Fix (iOS): Video playback would stop ~1 second after swiping past an adjacent audio item. Caused by multiple coexisting `media_kit` `Player` instances competing for the global AVAudioSession. The video/audio item widget now lazily creates its `Player` only while it is the current item and disposes it as soon as it stops being current, guaranteeing a single live `Player` at any time.
+
 ## 1.0.1
 
 - Documentation: Updated README with demo video and screenshots for better project visibility.

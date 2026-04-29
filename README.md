@@ -6,7 +6,7 @@
 
 A high-performance, premium, and fully-featured media gallery viewer for Flutter. Inspired by the sleek experience of Telegram, `kGallery` supports images, videos, and audio content with smooth transitions and intuitive gestures.
 
-![kGallery Banner](https://raw.githubusercontent.com/vishalbaps/kGallery/main/screenshots/kgallery_banner.png)
+
 
 ## 📸 Demo
 
@@ -52,17 +52,6 @@ This package uses `media_kit` for video and audio playback. You **must** follow 
 
 Refer to the [media_kit documentation](https://github.com/media-kit/media-kit) for detailed setup.
 
-### 3. Initialize
-
-In your `main.dart`, initialize the gallery:
-
-```dart
-void main() {
-  WidgetsFlutterBinding.ensureInitialized();
-  KGallery.ensureInitialized(); // Initializes MediaKit
-  runApp(MyApp());
-}
-```
 
 ## 🛠️ Usage
 

@@ -129,7 +129,8 @@ class KGallery extends StatefulWidget {
 
 class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   late ExtendedPageController _pageController;
-  final GlobalKey<ExtendedImageSlidePageState> _slidePageKey = GlobalKey<ExtendedImageSlidePageState>();
+  final GlobalKey<ExtendedImageSlidePageState> _slidePageKey =
+      GlobalKey<ExtendedImageSlidePageState>();
   late GalleryBloc _galleryBloc;
   final GlobalKey _textContentKey = GlobalKey();
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
@@ -147,11 +148,12 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
     try {
       KGallery.ensureInitialized();
     } catch (e) {
-      debugPrint('KGallery: MediaKit initialization failed or already initialized: $e');
+      debugPrint(
+          'KGallery: MediaKit initialization failed or already initialized: $e');
     }
 
-    _effectiveProgressWidget =
-        widget.progressWidget ?? const Center(child: CircularProgressIndicator(color: Colors.white));
+    _effectiveProgressWidget = widget.progressWidget ??
+        const Center(child: CircularProgressIndicator(color: Colors.white));
 
     _effectiveTheme = widget.theme ?? GalleryTheme.dark();
 
@@ -198,7 +200,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
             child: BlocProvider.value(
               value: _galleryBloc,
               child: BlocListener<GalleryBloc, GalleryState>(
-                listenWhen: (previous, current) => previous.currentIndex != current.currentIndex,
+                listenWhen: (previous, current) =>
+                    previous.currentIndex != current.currentIndex,
                 listener: (context, state) {
                   widget.onIndexChanged?.call(state.currentIndex);
                 },
@@ -215,7 +218,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         slidePageKey: _slidePageKey,
                         activePlayerNotifier: activePlayerNotifier,
                         onClose: widget.onClose,
-                        noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
+                        noInternetMessage: widget.noInternetMessage ??
+                            _effectiveTheme.noInternetMessage,
                       ),
 
                       _GalleryTopBar(
@@ -286,7 +290,8 @@ class _GalleryTopBar extends StatelessWidget {
   final double horizontalPadding;
   final Widget? leading;
   final String? title;
-  final Widget Function(BuildContext, int, List<GalleryItem>)? actionMenuBuilder;
+  final Widget Function(BuildContext, int, List<GalleryItem>)?
+      actionMenuBuilder;
   final void Function(int)? onClose;
   final GalleryTheme theme;
 
@@ -333,7 +338,8 @@ class _GalleryTopBar extends StatelessWidget {
         return AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          top: (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
+          top:
+              (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
           left: 0,
           right: 0,
           child: ClipRect(
@@ -352,7 +358,10 @@ class _GalleryTopBar extends StatelessWidget {
                   children: [
                     leadingWidget,
                     Expanded(child: Center(child: titleWidget)),
-                    if (customActions != null) customActions else SizedBox(width: isTablet ? 64 : 48),
+                    if (customActions != null)
+                      customActions
+                    else
+                      SizedBox(width: isTablet ? 64 : 48),
                   ],
                 ),
               ),
@@ -391,22 +400,30 @@ class _GalleryOverlayLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
-        final currentItem = state.items.isNotEmpty ? state.items[state.currentIndex] : null;
-        if (currentItem == null || (currentItem.title == null && currentItem.description == null)) {
-          return const SizedBox.shrink();
-        }
+        final currentItem =
+            state.items.isNotEmpty ? state.items[state.currentIndex] : null;
+        if (currentItem == null) return const SizedBox.shrink();
+
+        final bool hasSeekbar = currentItem.type == GalleryItemType.video ||
+            currentItem.type == GalleryItemType.audio;
+        final bool hasText =
+            currentItem.title != null || currentItem.description != null;
+
+        if (!hasSeekbar && !hasText) return const SizedBox.shrink();
 
         final double textPanelHeight = state.textPanelHeight;
-        final bool hasSeekbar = currentItem.type == GalleryItemType.video || currentItem.type == GalleryItemType.audio;
         const double seekbarHeight = 40.0;
 
         final double textBottomOffset = (state.isUIVisible && !state.isSliding)
-            ? MediaQuery.of(context).padding.bottom + thumbnailStripHeight + (hasSeekbar ? seekbarHeight : 0.0)
+            ? MediaQuery.of(context).padding.bottom +
+                thumbnailStripHeight +
+                (hasSeekbar ? seekbarHeight : 0.0)
             : -500;
 
-        final double seekbarBottomOffset = (state.isUIVisible && !state.isSliding)
-            ? MediaQuery.of(context).padding.bottom + thumbnailStripHeight
-            : -500;
+        final double seekbarBottomOffset =
+            (state.isUIVisible && !state.isSliding)
+                ? MediaQuery.of(context).padding.bottom + thumbnailStripHeight
+                : -500;
 
         return Stack(
           children: [
@@ -426,24 +443,25 @@ class _GalleryOverlayLayer extends StatelessWidget {
                   },
                 ),
               ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              bottom: textBottomOffset,
-              left: 0,
-              right: 0,
-              child: _GalleryTextPanel(
-                item: currentItem,
-                textPanelHeight: textPanelHeight,
-                horizontalPadding: horizontalPadding,
-                constraints: constraints,
-                topBarHeight: topBarHeight,
-                thumbnailStripHeight: thumbnailStripHeight,
-                textContentKey: textContentKey,
-                theme: theme,
-                animateHeightTo: animateHeightTo,
+            if (hasText)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                bottom: textBottomOffset,
+                left: 0,
+                right: 0,
+                child: _GalleryTextPanel(
+                  item: currentItem,
+                  textPanelHeight: textPanelHeight,
+                  horizontalPadding: horizontalPadding,
+                  constraints: constraints,
+                  topBarHeight: topBarHeight,
+                  thumbnailStripHeight: thumbnailStripHeight,
+                  textContentKey: textContentKey,
+                  theme: theme,
+                  animateHeightTo: animateHeightTo,
+                ),
               ),
-            ),
           ],
         );
       },
@@ -488,7 +506,8 @@ class _GalleryTextPanel extends StatelessWidget {
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -514,7 +533,8 @@ class _GalleryTextPanel extends StatelessWidget {
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -546,7 +566,10 @@ class _GalleryTextPanel extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.transparent
+                ],
                 stops: const [0.0, 1.0],
               ),
             ),

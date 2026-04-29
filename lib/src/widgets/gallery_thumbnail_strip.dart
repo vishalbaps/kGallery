@@ -210,19 +210,9 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                                 child: Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    ExtendedImage.network(
-                                      state.items[index].thumbnailUrl ??
-                                          state.items[index].url,
-                                      fit: BoxFit.cover,
-                                      cache: true,
-                                      loadStateChanged: (extendedImageState) {
-                                        if (extendedImageState
-                                                .extendedImageLoadState ==
-                                            LoadState.loading) {
-                                          return widget.thumbProgressWidget;
-                                        }
-                                        return null;
-                                      },
+                                    _buildThumbnail(
+                                      state.items[index],
+                                      dimensions,
                                     ),
                                     if (state.items[index].type !=
                                         GalleryItemType.image)
@@ -233,7 +223,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                                           padding: const EdgeInsets.all(1),
                                           decoration: BoxDecoration(
                                             color:
-                                                Colors.black.withOpacity(0.5),
+                                                Colors.black.withValues(alpha: 0.5),
                                             shape: BoxShape.circle,
                                           ),
                                           child: const Icon(
@@ -258,6 +248,62 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildThumbnail(GalleryItem item, _AdaptiveDimensions dimensions) {
+    final String? thumbUrl = item.thumbnailUrl;
+    final String url = item.url;
+
+    // Use thumbnailUrl if available, otherwise use url ONLY if it's an image.
+    // For video/audio, we shouldn't use the media URL as an image source.
+    final String? effectiveImageUrl = (thumbUrl != null && thumbUrl.isNotEmpty)
+        ? thumbUrl
+        : (item.type == GalleryItemType.image && url.isNotEmpty ? url : null);
+
+    if (effectiveImageUrl == null) {
+      return Container(
+        color: Colors.white.withValues(alpha: 0.1),
+        alignment: Alignment.center,
+        child: _buildTypeIcon(item.type, dimensions.unselectedSize * 0.4),
+      );
+    }
+
+    return ExtendedImage.network(
+      effectiveImageUrl,
+      fit: BoxFit.cover,
+      cache: true,
+      loadStateChanged: (extendedImageState) {
+        switch (extendedImageState.extendedImageLoadState) {
+          case LoadState.loading:
+            return widget.thumbProgressWidget;
+          case LoadState.failed:
+            return Container(
+              color: Colors.white.withValues(alpha: 0.1),
+              alignment: Alignment.center,
+              child: _buildTypeIcon(item.type, dimensions.unselectedSize * 0.4),
+            );
+          case LoadState.completed:
+            return null;
+        }
+      },
+    );
+  }
+
+  Widget _buildTypeIcon(GalleryItemType type, double size) {
+    IconData iconData;
+    switch (type) {
+      case GalleryItemType.video:
+        iconData = Icons.videocam;
+      case GalleryItemType.audio:
+        iconData = Icons.audiotrack;
+      case GalleryItemType.image:
+        iconData = Icons.image;
+    }
+    return Icon(
+      iconData,
+      color: Colors.white54,
+      size: size,
     );
   }
 }
