@@ -52,6 +52,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
   VideoController? _videoController;
   Timer? _hideUITimer;
   StreamSubscription? _playingSubscription;
+  StreamSubscription? _completedSubscription;
 
   void _startHideUITimer() {
     _hideUITimer?.cancel();
@@ -104,6 +105,17 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
       }
     });
 
+    _completedSubscription = p.stream.completed.listen((completed) {
+      if (!mounted || !completed) return;
+      p.seek(Duration.zero);
+      p.pause();
+      _cancelHideUITimer();
+      final state = widget.galleryBloc.state;
+      if (!state.isUIVisible && state.currentIndex == widget.index) {
+        widget.galleryBloc.add(GalleryToggleUI(isVisible: true));
+      }
+    });
+
     p.open(Media(widget.item.url), play: false);
     widget.activePlayerNotifier.value = p;
     _playWithConnectivityCheck();
@@ -117,6 +129,8 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     _hideUITimer?.cancel();
     _playingSubscription?.cancel();
     _playingSubscription = null;
+    _completedSubscription?.cancel();
+    _completedSubscription = null;
     if (widget.activePlayerNotifier.value == p) {
       widget.activePlayerNotifier.value = null;
     }
@@ -202,17 +216,28 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
         fit: StackFit.expand,
         children: [
           if (widget.isAudio)
-            if (widget.item.thumbnailUrl != null)
-              Center(
-                child: ExtendedImage.network(
-                  widget.item.thumbnailUrl!,
-                  fit: BoxFit.contain,
-                ),
-              )
-            else
-              const Center(
-                child: Icon(Icons.audiotrack, size: 100, color: Colors.white54),
-              )
+            Center(
+              child: widget.item.thumbnailUrl != null
+                  ? ExtendedImage.network(
+                      widget.item.thumbnailUrl!,
+                      fit: BoxFit.contain,
+                      loadStateChanged: (ExtendedImageState state) {
+                        if (state.extendedImageLoadState == LoadState.failed) {
+                          return const Icon(
+                            Icons.audiotrack,
+                            size: 100,
+                            color: Colors.white54,
+                          );
+                        }
+                        return null;
+                      },
+                    )
+                  : const Icon(
+                      Icons.audiotrack,
+                      size: 100,
+                      color: Colors.white54,
+                    ),
+            )
           else
             Center(
               child: _videoController != null
