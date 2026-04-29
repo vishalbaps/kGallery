@@ -45,8 +45,11 @@ class GalleryMediaItemWidget extends StatefulWidget {
 }
 
 class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
-  late final Player player;
-  late final VideoController videoController;
+  // Only the widget that is the current gallery item owns a live Player.
+  // This prevents multiple media_kit Players from competing for iOS's
+  // global AVAudioSession, which would otherwise interrupt playback.
+  Player? _player;
+  VideoController? _videoController;
   Timer? _hideUITimer;
   StreamSubscription? _playingSubscription;
 
@@ -69,39 +72,66 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
   @override
   void initState() {
     super.initState();
-    player = Player();
-    videoController = VideoController(player);
-
-    player.open(Media(widget.item.url), play: false);
-
-    _playingSubscription = player.stream.playing.listen((isPlaying) {
-      if (mounted) {
-        final state = widget.galleryBloc.state;
-        if (isPlaying &&
-            state.isUIVisible &&
-            state.currentIndex == widget.index) {
-          _startHideUITimer();
-        } else {
-          _cancelHideUITimer();
+    if (widget.galleryBloc.state.currentIndex == widget.index) {
+      _activatePlayer();
+    } else {
+      // Fallback for the case where the widget is built in the same frame
+      // as onPageChanged fires (swipe settle race). By post-frame the state
+      // is stable, so we can safely check and activate if needed.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
+          _activatePlayer();
         }
+      });
+    }
+  }
+
+  void _activatePlayer() {
+    if (_player != null) return;
+    final p = Player();
+    _player = p;
+    _videoController = VideoController(p);
+
+    _playingSubscription = p.stream.playing.listen((isPlaying) {
+      if (!mounted) return;
+      final state = widget.galleryBloc.state;
+      if (isPlaying &&
+          state.isUIVisible &&
+          state.currentIndex == widget.index) {
+        _startHideUITimer();
+      } else {
+        _cancelHideUITimer();
       }
     });
 
-    // Check if we are initially the active item
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final state = widget.galleryBloc.state;
-        if (state.currentIndex == widget.index) {
-          widget.activePlayerNotifier.value = player;
-          _playWithConnectivityCheck();
-        }
-      }
-    });
+    p.open(Media(widget.item.url), play: false);
+    widget.activePlayerNotifier.value = p;
+    _playWithConnectivityCheck();
+
+    if (mounted) setState(() {});
+  }
+
+  void _deactivatePlayer() {
+    final p = _player;
+    if (p == null) return;
+    _hideUITimer?.cancel();
+    _playingSubscription?.cancel();
+    _playingSubscription = null;
+    if (widget.activePlayerNotifier.value == p) {
+      widget.activePlayerNotifier.value = null;
+    }
+    _player = null;
+    _videoController = null;
+    p.dispose();
+    if (mounted) setState(() {});
   }
 
   Future<void> _playWithConnectivityCheck() async {
+    final p = _player;
+    if (p == null) return;
+
     if (!widget.item.url.startsWith('http')) {
-      player.play();
+      p.play();
       return;
     }
 
@@ -121,25 +151,17 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
         );
       }
     } else {
-      if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
-        player.play();
+      if (mounted &&
+          _player == p &&
+          widget.galleryBloc.state.currentIndex == widget.index) {
+        p.play();
       }
     }
   }
 
   @override
   void dispose() {
-    _hideUITimer?.cancel();
-    _playingSubscription?.cancel();
-    if (widget.activePlayerNotifier.value == player) {
-      final notifier = widget.activePlayerNotifier;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (notifier.value == player) {
-          notifier.value = null;
-        }
-      });
-    }
-    player.dispose();
+    _deactivatePlayer();
     super.dispose();
   }
 
@@ -153,13 +175,9 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
               previous.currentIndex != current.currentIndex,
           listener: (context, state) {
             if (state.currentIndex == widget.index) {
-              widget.activePlayerNotifier.value = player;
-              _playWithConnectivityCheck();
+              _activatePlayer();
             } else {
-              player.pause();
-              if (widget.activePlayerNotifier.value == player) {
-                widget.activePlayerNotifier.value = null;
-              }
+              _deactivatePlayer();
             }
           },
         ),
@@ -168,8 +186,10 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
           listenWhen: (previous, current) =>
               previous.isUIVisible != current.isUIVisible,
           listener: (context, state) {
+            final p = _player;
+            if (p == null) return;
             if (state.currentIndex == widget.index) {
-              if (state.isUIVisible && player.state.playing) {
+              if (state.isUIVisible && p.state.playing) {
                 _startHideUITimer();
               } else {
                 _cancelHideUITimer();
@@ -195,11 +215,15 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
               )
           else
             Center(
-              child: Video(
-                controller: videoController,
-                controls: NoVideoControls,
-                fit: BoxFit.contain,
-              ),
+              child: _videoController != null
+                  ? Video(
+                      controller: _videoController!,
+                      controls: NoVideoControls,
+                      fit: BoxFit.contain,
+                    )
+                  : const SizedBox.expand(
+                      child: ColoredBox(color: Colors.black),
+                    ),
             ),
 
           // Transparent overlay to catch taps for toggling UI (only for background, not play/pause)
@@ -214,97 +238,99 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
             ),
           ),
 
-          // Central Controls: Play/Pause button & Buffering indicator
-          Center(
-            child: StreamBuilder<bool>(
-              initialData: player.state.playing,
-              stream: player.stream.playing,
-              builder: (context, snapshot) {
-                final isPlaying = snapshot.data ?? false;
+          // Central Controls: Play/Pause button & Buffering indicator (only when this is the active item)
+          if (_player != null)
+            Center(
+              child: StreamBuilder<bool>(
+                initialData: _player!.state.playing,
+                stream: _player!.stream.playing,
+                builder: (context, snapshot) {
+                  final p = _player;
+                  if (p == null) return const SizedBox.shrink();
+                  final isPlaying = snapshot.data ?? false;
 
-                return Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    // Buffering indicator (only when playing)
-                    if (isPlaying)
-                      StreamBuilder<bool>(
-                        initialData: player.state.buffering,
-                        stream: player.stream.buffering,
-                        builder: (context, bufferingSnapshot) {
-                          final isBuffering = bufferingSnapshot.data ?? false;
-                          if (!isBuffering) return const SizedBox.shrink();
-
-                          return const CircularProgressIndicator(
-                            color: Colors.white,
-                          );
-                        },
-                      ),
-
-                    // Play/Pause button
-                    BlocBuilder<GalleryBloc, GalleryState>(
-                      bloc: widget.galleryBloc,
-                      buildWhen: (previous, current) =>
-                          previous.isUIVisible != current.isUIVisible,
-                      builder: (context, galleryState) {
-                        final isVisible = galleryState.isUIVisible;
-
-                        return StreamBuilder<bool>(
-                          initialData: player.state.buffering,
-                          stream: player.stream.buffering,
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Buffering indicator (only when playing)
+                      if (isPlaying)
+                        StreamBuilder<bool>(
+                          initialData: p.state.buffering,
+                          stream: p.stream.buffering,
                           builder: (context, bufferingSnapshot) {
                             final isBuffering = bufferingSnapshot.data ?? false;
+                            if (!isBuffering) return const SizedBox.shrink();
 
-                            // Hide the button if the UI is hidden, OR if it's currently buffering while playing
-                            final bool hideButton =
-                                !isVisible || (isPlaying && isBuffering);
+                            return const CircularProgressIndicator(
+                              color: Colors.white,
+                            );
+                          },
+                        ),
 
-                            return IgnorePointer(
-                              ignoring: hideButton,
-                              child: AnimatedOpacity(
-                                opacity: hideButton ? 0.0 : 1.0,
-                                duration: const Duration(milliseconds: 300),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    if (isPlaying) {
-                                      player.pause();
-                                    } else {
-                                      _playWithConnectivityCheck();
-                                    }
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(
-                                      40.0,
-                                    ), // Expands the clickable area
-                                    child: Container(
-                                      padding: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.5,
+                      // Play/Pause button
+                      BlocBuilder<GalleryBloc, GalleryState>(
+                        bloc: widget.galleryBloc,
+                        buildWhen: (previous, current) =>
+                            previous.isUIVisible != current.isUIVisible,
+                        builder: (context, galleryState) {
+                          final isVisible = galleryState.isUIVisible;
+
+                          return StreamBuilder<bool>(
+                            initialData: p.state.buffering,
+                            stream: p.stream.buffering,
+                            builder: (context, bufferingSnapshot) {
+                              final isBuffering =
+                                  bufferingSnapshot.data ?? false;
+
+                              // Hide the button if the UI is hidden, OR if it's currently buffering while playing
+                              final bool hideButton =
+                                  !isVisible || (isPlaying && isBuffering);
+
+                              return IgnorePointer(
+                                ignoring: hideButton,
+                                child: AnimatedOpacity(
+                                  opacity: hideButton ? 0.0 : 1.0,
+                                  duration: const Duration(milliseconds: 300),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: () {
+                                      if (isPlaying) {
+                                        p.pause();
+                                      } else {
+                                        _playWithConnectivityCheck();
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(40.0),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.5,
+                                          ),
+                                          shape: BoxShape.circle,
                                         ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        isPlaying
-                                            ? Icons.pause
-                                            : Icons.play_arrow,
-                                        color: Colors.white,
-                                        size: 48,
+                                        child: Icon(
+                                          isPlaying
+                                              ? Icons.pause
+                                              : Icons.play_arrow,
+                                          color: Colors.white,
+                                          size: 48,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

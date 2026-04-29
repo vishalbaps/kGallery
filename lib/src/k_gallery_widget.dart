@@ -392,12 +392,14 @@ class _GalleryOverlayLayer extends StatelessWidget {
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
         final currentItem = state.items.isNotEmpty ? state.items[state.currentIndex] : null;
-        if (currentItem == null || (currentItem.title == null && currentItem.description == null)) {
-          return const SizedBox.shrink();
-        }
+        if (currentItem == null) return const SizedBox.shrink();
+
+        final bool hasSeekbar = currentItem.type == GalleryItemType.video || currentItem.type == GalleryItemType.audio;
+        final bool hasText = currentItem.title != null || currentItem.description != null;
+
+        if (!hasSeekbar && !hasText) return const SizedBox.shrink();
 
         final double textPanelHeight = state.textPanelHeight;
-        final bool hasSeekbar = currentItem.type == GalleryItemType.video || currentItem.type == GalleryItemType.audio;
         const double seekbarHeight = 40.0;
 
         final double textBottomOffset = (state.isUIVisible && !state.isSliding)
@@ -426,24 +428,25 @@ class _GalleryOverlayLayer extends StatelessWidget {
                   },
                 ),
               ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              bottom: textBottomOffset,
-              left: 0,
-              right: 0,
-              child: _GalleryTextPanel(
-                item: currentItem,
-                textPanelHeight: textPanelHeight,
-                horizontalPadding: horizontalPadding,
-                constraints: constraints,
-                topBarHeight: topBarHeight,
-                thumbnailStripHeight: thumbnailStripHeight,
-                textContentKey: textContentKey,
-                theme: theme,
-                animateHeightTo: animateHeightTo,
+            if (hasText)
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                bottom: textBottomOffset,
+                left: 0,
+                right: 0,
+                child: _GalleryTextPanel(
+                  item: currentItem,
+                  textPanelHeight: textPanelHeight,
+                  horizontalPadding: horizontalPadding,
+                  constraints: constraints,
+                  topBarHeight: topBarHeight,
+                  thumbnailStripHeight: thumbnailStripHeight,
+                  textContentKey: textContentKey,
+                  theme: theme,
+                  animateHeightTo: animateHeightTo,
+                ),
               ),
-            ),
           ],
         );
       },
