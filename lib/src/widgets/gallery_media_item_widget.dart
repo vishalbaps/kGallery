@@ -119,7 +119,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     if (mounted) setState(() {});
   }
 
-  void _deactivatePlayer() {
+  void _deactivatePlayer({bool fromDispose = false}) {
     final p = _player;
     if (p == null) return;
     _hideUITimer?.cancel();
@@ -127,13 +127,21 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
     _playingSubscription = null;
     _completedSubscription?.cancel();
     _completedSubscription = null;
-    if (widget.activePlayerNotifier.value == p) {
-      widget.activePlayerNotifier.value = null;
-    }
     _player = null;
     _videoController = null;
     p.dispose();
-    if (mounted) setState(() {});
+
+    final notifier = widget.activePlayerNotifier;
+    if (fromDispose) {
+      // During dispose the widget tree is locked — defer the notifier update
+      // to avoid triggering setState on ValueListenableBuilder listeners.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (notifier.value == p) notifier.value = null;
+      });
+    } else {
+      if (notifier.value == p) notifier.value = null;
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _playWithConnectivityCheck() async {
@@ -171,7 +179,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
 
   @override
   void dispose() {
-    _deactivatePlayer();
+    _deactivatePlayer(fromDispose: true);
     super.dispose();
   }
 

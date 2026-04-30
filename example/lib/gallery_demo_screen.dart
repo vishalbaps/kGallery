@@ -137,7 +137,6 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () async {
-              final navigator = Navigator.of(context);
               final result = await context.push<int>(
                 KGalleryDetailScreen.id,
                 extra: {

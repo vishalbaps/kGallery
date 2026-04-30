@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="NONE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="10bfe580-774d-4d38-ac25-30e4f33bbdb0" name="Changes" comment="">
+    <list default="true" id="10bfe580-774d-4d38-ac25-30e4f33bbdb0" name="Changes" comment="- deprecated thing removed&#10;- thumbnail error resolved">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/k_gallery.iml" beforeDir="false" afterPath="$PROJECT_DIR$/k_gallery.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/example/lib/gallery_demo_screen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/example/lib/gallery_demo_screen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/k_gallery_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/k_gallery_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/widgets/gallery_media_item_widget.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/widgets/gallery_media_item_widget.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/lib/src/widgets/gallery_thumbnail_strip.dart" beforeDir="false" afterPath="$PROJECT_DIR$/lib/src/widgets/gallery_thumbnail_strip.dart" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -20,6 +23,9 @@
     <persistenceIdMap>
       <entry key="_/Users/projecttree/StudioProjects/custom_packages/kGallery" value="3CwEiENDvueesNOgoJBCRtgoIIO" />
     </persistenceIdMap>
+  </component>
+  <component name="CopilotUserSelectedChatMode">
+    <option name="inlineChatModeId" value="Ask" />
   </component>
   <component name="FileEditorManager">
     <leaf>
@@ -35,23 +41,28 @@
     </leaf>
   </component>
   <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="video-pause-issue" />
+      </map>
+    </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "vishalbaps"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;vishalbaps&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "https://github.com/vishalbaps/kGallery.git",
-    "accountId": "f2074f78-8be2-4e49-999b-e7d7d3c3b08e"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/vishalbaps/kGallery.git&quot;,
+    &quot;accountId&quot;: &quot;f2074f78-8be2-4e49-999b-e7d7d3c3b08e&quot;
   }
-}]]></component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 3
-}]]></component>
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
   <component name="ProjectId" id="3CwEiENDvueesNOgoJBCRtgoIIO" />
   <component name="ProjectView">
     <navigator currentView="ProjectPane" proportions="" version="1" />
@@ -76,7 +87,7 @@
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
     "dart.analysis.tool.window.visible": "false",
-    "git-widget-placeholder": "v__1.0.1",
+    "git-widget-placeholder": "v__1.0.2",
     "io.flutter.project.isFirstOpen": "true",
     "io.flutter.reload.alreadyRun": "true",
     "kotlin-language-version-configured": "true",
@@ -98,6 +109,23 @@
       <option name="presentableId" value="Default" />
       <updated>1777288361187</updated>
     </task>
+    <task id="LOCAL-00001" summary="- remove unnecessary  thing &#10;- update bloc package to latest">
+      <option name="closed" value="true" />
+      <created>1777355109885</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1777355109885</updated>
+    </task>
+    <task id="LOCAL-00002" summary="- deprecated thing removed&#10;- thumbnail error resolved">
+      <option name="closed" value="true" />
+      <created>1777356047424</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1777356047424</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -116,6 +144,27 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="- remove unnecessary  thing &#10;- update bloc package to latest" />
+    <MESSAGE value="- deprecated thing removed&#10;- thumbnail error resolved" />
+    <option name="LAST_COMMIT_MESSAGE" value="- deprecated thing removed&#10;- thumbnail error resolved" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="Dart">
+          <url>file://$PROJECT_DIR$/lib/src/widgets/gallery_thumbnail_strip.dart</url>
+          <line>121</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="Dart">
+          <url>file://$PROJECT_DIR$/lib/src/k_gallery_widget.dart</url>
+          <line>296</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
   <component name="github-copilot-workspace">
     <instructionFileLocations>
