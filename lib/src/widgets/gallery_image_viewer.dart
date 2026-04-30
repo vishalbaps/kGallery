@@ -5,6 +5,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:media_kit/media_kit.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
+import '../models/gallery_theme.dart';
 import 'gallery_media_item_widget.dart';
 
 /// Internal widget for displaying the main media content with gestures.
@@ -33,6 +34,9 @@ class GalleryImageViewer extends StatefulWidget {
   /// Custom message shown when no internet is detected for remote media.
   final String? noInternetMessage;
 
+  /// Theme forwarded to media items for fullscreen seekbar styling.
+  final GalleryTheme? theme;
+
   const GalleryImageViewer({
     super.key,
     required this.pageController,
@@ -43,6 +47,7 @@ class GalleryImageViewer extends StatefulWidget {
     required this.activePlayerNotifier,
     this.onClose,
     this.noInternetMessage,
+    this.theme,
   });
 
   @override
@@ -215,6 +220,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                     galleryBloc: context.read<GalleryBloc>(),
                     isAudio: item.type == GalleryItemType.audio,
                     noInternetMessage: widget.noInternetMessage,
+                    theme: widget.theme,
                   );
 
                   if (widget.enableSwipeToDismiss) {

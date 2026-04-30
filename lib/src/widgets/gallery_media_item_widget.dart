@@ -7,6 +7,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
+import '../models/gallery_theme.dart';
 
 /// Internal widget for displaying an individual media item (Video or Audio).
 ///
@@ -30,6 +31,9 @@ class GalleryMediaItemWidget extends StatefulWidget {
   /// Custom message shown when no internet is detected.
   final String? noInternetMessage;
 
+  /// Gallery theme used to color the fullscreen seek bar.
+  final GalleryTheme? theme;
+
   const GalleryMediaItemWidget({
     super.key,
     required this.item,
@@ -38,6 +42,7 @@ class GalleryMediaItemWidget extends StatefulWidget {
     required this.galleryBloc,
     this.isAudio = false,
     this.noInternetMessage,
+    this.theme,
   });
 
   @override
@@ -50,6 +55,7 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
   // global AVAudioSession, which would otherwise interrupt playback.
   Player? _player;
   VideoController? _videoController;
+  final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
   Timer? _hideUITimer;
   StreamSubscription? _playingSubscription;
   StreamSubscription? _completedSubscription;
@@ -68,6 +74,13 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
 
   void _cancelHideUITimer() {
     _hideUITimer?.cancel();
+  }
+
+  Future<void> _enterFullscreen() async {
+    _cancelHideUITimer();
+    await _videoKey.currentState?.enterFullscreen();
+    final p = _player;
+    if (mounted && p != null && p.state.playing) _startHideUITimer();
   }
 
   @override
@@ -246,8 +259,40 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
             Center(
               child: _videoController != null
                   ? Video(
+                      key: _videoKey,
                       controller: _videoController!,
-                      controls: NoVideoControls,
+                      controls: (state) {
+                        bool inFullscreen;
+                        try {
+                          inFullscreen = state.isFullscreen();
+                        } catch (_) {
+                          inFullscreen = false;
+                        }
+                        if (!inFullscreen) return const SizedBox.shrink();
+
+                        final activeColor =
+                            widget.theme?.seekbarActiveColor ?? Colors.white;
+                        final inactiveColor =
+                            widget.theme?.seekbarInactiveColor ??
+                                Colors.white30;
+                        final themeData = MaterialVideoControlsThemeData(
+                          seekBarPositionColor: activeColor,
+                          seekBarThumbColor: activeColor,
+                          seekBarColor: inactiveColor,
+                          seekBarBufferColor: inactiveColor,
+                          bottomButtonBarMargin:  const EdgeInsets.only(left: 16.0, right: 8.0, bottom: 16),
+                          seekBarMargin: const EdgeInsets.only(
+                            left: 16.0,
+                            right: 16.0,
+                            bottom: 16.0,
+                          ),
+                        );
+                        return MaterialVideoControlsTheme(
+                          normal: themeData,
+                          fullscreen: themeData,
+                          child: MaterialVideoControls(state),
+                        );
+                      },
                       fit: BoxFit.contain,
                     )
                   : const SizedBox.expand(
@@ -360,8 +405,109 @@ class _GalleryMediaItemWidgetState extends State<GalleryMediaItemWidget> {
                 },
               ),
             ),
+
+          // Fullscreen button — shown only for horizontal videos when UI is visible
+          if (!widget.isAudio && _player != null)
+            Positioned.fill(
+              child: _FullscreenButtonOverlay(
+                player: _player!,
+                galleryBloc: widget.galleryBloc,
+                onTap: _enterFullscreen,
+              ),
+            ),
         ],
       ),
     );
   }
 }
+
+class _FullscreenButtonOverlay extends StatelessWidget {
+  final Player player;
+  final GalleryBloc galleryBloc;
+  final VoidCallback onTap;
+
+  const _FullscreenButtonOverlay({
+    required this.player,
+    required this.galleryBloc,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int?>(
+      initialData: player.state.width,
+      stream: player.stream.width,
+      builder: (context, widthSnapshot) {
+        return StreamBuilder<int?>(
+          initialData: player.state.height,
+          stream: player.stream.height,
+          builder: (context, heightSnapshot) {
+            final videoW = widthSnapshot.data;
+            final videoH = heightSnapshot.data;
+            if (videoW == null || videoH == null || videoW <= videoH) {
+              return const SizedBox.shrink();
+            }
+
+            // Compute where the video content sits when rendered with BoxFit.contain.
+            final screenSize = MediaQuery.of(context).size;
+            final double videoAspect = videoW / videoH;
+            final double screenAspect = screenSize.width / screenSize.height;
+            final double renderedH = videoAspect >= screenAspect
+                ? screenSize.width / videoAspect
+                : screenSize.height;
+            final double renderedW = videoAspect >= screenAspect
+                ? screenSize.width
+                : screenSize.height * videoAspect;
+
+            // Place button 16px inside the bottom-right corner of the video frame.
+            final double buttonBottom =
+                (screenSize.height - renderedH) / 2 + 16.0;
+            final double buttonRight =
+                (screenSize.width - renderedW) / 2 + 16.0;
+
+            return BlocBuilder<GalleryBloc, GalleryState>(
+              bloc: galleryBloc,
+              buildWhen: (prev, curr) =>
+                  prev.isUIVisible != curr.isUIVisible ||
+                  prev.isSliding != curr.isSliding,
+              builder: (context, state) {
+                final visible = state.isUIVisible && !state.isSliding;
+                return Stack(
+                  children: [
+                    Positioned(
+                      bottom: buttonBottom,
+                      right: buttonRight,
+                      child: IgnorePointer(
+                        ignoring: !visible,
+                        child: AnimatedOpacity(
+                          opacity: visible ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: GestureDetector(
+                            onTap: onTap,
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.fullscreen,
+                                color: Colors.white,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+

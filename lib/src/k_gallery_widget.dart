@@ -218,6 +218,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         activePlayerNotifier: activePlayerNotifier,
                         onClose: widget.onClose,
                         noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
+                        theme: _effectiveTheme,
                       ),
 
                       _GalleryTopBar(
