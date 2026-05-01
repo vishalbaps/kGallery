@@ -1,7 +1,13 @@
 ## 1.0.2
 
-- Feature: YouTube video support via the new `GalleryItemType.youtube` value. Pass any standard YouTube link (`youtu.be/...`, `youtube.com/watch?v=...`, `/shorts/...`, `/embed/...`) and it plays inside the gallery with the same seekbar, fullscreen, theme, and play/pause controls. Powered by `youtube_player_flutter` (official YouTube IFrame Player API).
-- Fix (iOS): Video playback would stop ~1 second after swiping past an adjacent audio item. Caused by multiple coexisting `media_kit` `Player` instances competing for the global AVAudioSession. The video/audio item widget now lazily creates its `Player` only while it is the current item and disposes it as soon as it stops being current, guaranteeing a single live `Player` at any time.
+- **New**: `GalleryItemType.youtube` — play any YouTube URL (`youtu.be/...`, `youtube.com/watch?v=...`, `/shorts/...`, `/embed/...`) directly in the gallery with the same play/pause button, buffering indicator, and themed seekbar as regular video items.
+- **New**: YouTube fullscreen — tap the `⤢` button to open a landscape fullscreen route with a position/duration timer (`00:42 / 10:23`), seekbar (colors from `GalleryTheme`), and exit button — matching the media_kit video fullscreen layout.
+- **New**: Seekbar shown above the thumbnail strip for video, audio, and YouTube items while controls are visible.
+- **Fix (iOS)**: Video playback stopped ~1 s after swiping past an adjacent audio item. Each item now lazily creates and disposes its `media_kit` `Player` — only one `Player` is alive at a time, eliminating AVAudioSession conflicts.
+- **Fix**: YouTube fullscreen playback — video now auto-plays correctly when entering and exiting fullscreen. Root cause: a stale `isReady` flag on the shared `YoutubePlayerController` caused the seek-to-resume command to fire before the new WebView's IFrame API was ready; fixed by resetting `isReady` before each WebView swap.
+- **Perf**: Narrowed `BlocBuilder.buildWhen` on the page view so it rebuilds only when the items list changes — previously, every UI tap, swipe gesture, or text-panel drag triggered a full page-view rebuild.
+- **Perf**: YouTube play/pause controls now update via a scoped `AnimatedBuilder` instead of full-widget `setState` on every controller tick.
+- **Deps**: `flutter_bloc` → ^9.1.1, `freezed_annotation` → ^3.1.0, `extended_image` → ^10.0.1, `json_annotation` → ^4.11.0.
 
 ## 1.0.1
 

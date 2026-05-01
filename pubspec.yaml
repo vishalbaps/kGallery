@@ -1,7 +1,7 @@
 name: k_gallery
 description: >
   A Telegram-style media gallery viewer for Flutter. Supports images, videos,
-  and audio with pinch-to-zoom, thumbnail strip, swipe-to-dismiss, and more.
+  audio, and YouTube with pinch-to-zoom, thumbnail strip, swipe-to-dismiss, and more.
 version: 1.0.2
 homepage: https://github.com/vishalbaps/kGallery
 repository: https://github.com/vishalbaps/kGallery.git
@@ -12,6 +12,7 @@ topics:
   - media
   - image-viewer
   - video-player
+  - youtube
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
