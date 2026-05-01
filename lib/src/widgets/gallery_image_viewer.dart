@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 import '../models/gallery_theme.dart';
-import 'gallery_media_item_widget.dart';
+import 'media/gallery_audio_item.dart';
+import 'media/gallery_video_item.dart';
+import 'media/gallery_youtube_item.dart';
 
 /// Internal widget for displaying the main media content with gestures.
 class GalleryImageViewer extends StatefulWidget {
@@ -25,8 +28,11 @@ class GalleryImageViewer extends StatefulWidget {
   /// Key to control the slide page state.
   final GlobalKey<ExtendedImageSlidePageState> slidePageKey;
 
-  /// Notifier for the currently active media player.
+  /// Notifier for the currently active media_kit player (video/audio items).
   final ValueNotifier<Player?> activePlayerNotifier;
+
+  /// Notifier for the currently active YouTube player (youtube items).
+  final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
 
   /// Callback for when the viewer is closed.
   final void Function(int currentIndex)? onClose;
@@ -45,6 +51,7 @@ class GalleryImageViewer extends StatefulWidget {
     required this.enableSwipeToDismiss,
     required this.slidePageKey,
     required this.activePlayerNotifier,
+    required this.activeYoutubeNotifier,
     this.onClose,
     this.noInternetMessage,
     this.theme,
@@ -90,6 +97,15 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GalleryBloc, GalleryState>(
+      // The page view subtree only needs to rebuild when the list of items
+      // changes. Bloc events for UI toggling, sliding, text-panel resizing,
+      // and current-index changes are handled elsewhere (page controller
+      // for index, scoped widgets for the rest), so excluding them from
+      // this rebuild avoids tearing down and re-creating every visible
+      // item builder on each tap or drag.
+      buildWhen: (prev, curr) =>
+          !identical(prev.items, curr.items) ||
+          prev.items.length != curr.items.length,
       builder: (context, state) {
         return Listener(
           onPointerDown: (event) {
@@ -150,8 +166,9 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                 if (isSecondTap) {
                   _singleTapTimer?.cancel();
                 } else {
-                  final currentItem = state.items.isNotEmpty
-                      ? state.items[state.currentIndex]
+                  final blocState = context.read<GalleryBloc>().state;
+                  final currentItem = blocState.items.isNotEmpty
+                      ? blocState.items[blocState.currentIndex]
                       : null;
                   if (currentItem?.type == GalleryItemType.image) {
                     _singleTapTimer = Timer(
@@ -210,19 +227,41 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
               },
               itemBuilder: (BuildContext context, int index) {
                 final item = state.items[index];
+                final bloc = context.read<GalleryBloc>();
 
-                if (item.type == GalleryItemType.video ||
-                    item.type == GalleryItemType.audio) {
-                  final mediaChild = GalleryMediaItemWidget(
-                    item: item,
-                    index: index,
-                    activePlayerNotifier: widget.activePlayerNotifier,
-                    galleryBloc: context.read<GalleryBloc>(),
-                    isAudio: item.type == GalleryItemType.audio,
-                    noInternetMessage: widget.noInternetMessage,
-                    theme: widget.theme,
-                  );
+                Widget? mediaChild;
+                switch (item.type) {
+                  case GalleryItemType.video:
+                    mediaChild = GalleryVideoItem(
+                      item: item,
+                      index: index,
+                      activePlayerNotifier: widget.activePlayerNotifier,
+                      galleryBloc: bloc,
+                      noInternetMessage: widget.noInternetMessage,
+                      theme: widget.theme,
+                    );
+                  case GalleryItemType.audio:
+                    mediaChild = GalleryAudioItem(
+                      item: item,
+                      index: index,
+                      activePlayerNotifier: widget.activePlayerNotifier,
+                      galleryBloc: bloc,
+                      noInternetMessage: widget.noInternetMessage,
+                    );
+                  case GalleryItemType.youtube:
+                    mediaChild = GalleryYoutubeItem(
+                      item: item,
+                      index: index,
+                      activeYoutubeNotifier: widget.activeYoutubeNotifier,
+                      galleryBloc: bloc,
+                      noInternetMessage: widget.noInternetMessage,
+                      theme: widget.theme,
+                    );
+                  case GalleryItemType.image:
+                    mediaChild = null;
+                }
 
+                if (mediaChild != null) {
                   if (widget.enableSwipeToDismiss) {
                     return ExtendedImageSlidePageHandler(
                       heroBuilderForSlidingPage: (Widget result) {
@@ -231,7 +270,6 @@ class _GalleryImageViewerState extends State<GalleryImageViewer>
                       child: mediaChild,
                     );
                   }
-
                   return mediaChild;
                 }
 

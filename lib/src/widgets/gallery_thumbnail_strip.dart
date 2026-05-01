@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:k_gallery/k_gallery.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../bloc/gallery_bloc.dart';
 
 /// Internal widget for displaying the scrollable thumbnail strip.
@@ -18,8 +19,11 @@ class GalleryThumbnailStrip extends StatefulWidget {
   /// Custom loading widget for thumbnails.
   final Widget? thumbProgressWidget;
 
-  /// Notifier for the currently active media player (video/audio).
+  /// Notifier for the currently active media_kit player (video/audio).
   final ValueNotifier<Player?> activePlayerNotifier;
+
+  /// Notifier for the currently active YouTube player (youtube items).
+  final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
 
   /// Theme used to style the seekbar colors.
   final GalleryTheme theme;
@@ -29,6 +33,7 @@ class GalleryThumbnailStrip extends StatefulWidget {
     required this.enableHapticFeedback,
     required this.pageController,
     required this.activePlayerNotifier,
+    required this.activeYoutubeNotifier,
     required this.theme,
     this.thumbProgressWidget,
   });
@@ -118,40 +123,48 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
             state.items.isNotEmpty ? state.items[state.currentIndex] : null;
         final bool hasSeekbar = currentItem != null &&
             (currentItem.type == GalleryItemType.video ||
-                currentItem.type == GalleryItemType.audio);
+                currentItem.type == GalleryItemType.audio ||
+                currentItem.type == GalleryItemType.youtube);
 
         return ValueListenableBuilder<Player?>(
           valueListenable: widget.activePlayerNotifier,
           builder: (context, player, _) {
-            final bool showSeekbar = hasSeekbar && player != null;
-            const double seekbarHeight = 40.0;
-            final double totalHeight = dimensions.height +
-                bottomPadding +
-                (showSeekbar ? seekbarHeight : 0.0);
+            return ValueListenableBuilder<YoutubePlayerController?>(
+              valueListenable: widget.activeYoutubeNotifier,
+              builder: (context, ytController, _) {
+                final bool showSeekbar =
+                    hasSeekbar && (player != null || ytController != null);
+                const double seekbarHeight = 40.0;
+                final double totalHeight = dimensions.height +
+                    bottomPadding +
+                    (showSeekbar ? seekbarHeight : 0.0);
 
-            return AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeInOut,
-              bottom: (state.isUIVisible && !state.isSliding)
-                  ? 0
-                  : -(totalHeight + 20),
-              left: 0,
-              right: 0,
-              height: totalHeight,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.6),
-                    ),
-                    child: Column(
-                      children: [
-                        if (showSeekbar)
-                          SizedBox(
-                            height: seekbarHeight,
-                            child: _buildSeekbar(player, widget.theme),
-                          ),
+                return AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  bottom: (state.isUIVisible && !state.isSliding)
+                      ? 0
+                      : -(totalHeight + 20),
+                  left: 0,
+                  right: 0,
+                  height: totalHeight,
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.6),
+                        ),
+                        child: Column(
+                          children: [
+                            if (showSeekbar)
+                              SizedBox(
+                                height: seekbarHeight,
+                                child: ytController != null
+                                    ? _buildYoutubeSeekbar(
+                                        ytController, widget.theme)
+                                    : _buildSeekbar(player!, widget.theme),
+                              ),
                         Expanded(
                           child: Padding(
                             padding: EdgeInsets.only(bottom: bottomPadding),
@@ -296,6 +309,8 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                 ),
               ),
             );
+              },
+            );
           },
         );
       },
@@ -361,6 +376,50 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
     );
   }
 
+  Widget _buildYoutubeSeekbar(
+    YoutubePlayerController controller,
+    GalleryTheme theme,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
+          final position = controller.value.position;
+          final duration = controller.metadata.duration;
+          double max = duration.inMilliseconds.toDouble();
+          double val = position.inMilliseconds.toDouble();
+          if (max <= 0) max = 1.0;
+          if (val < 0) val = 0.0;
+          if (val > max) val = max;
+          return Row(
+            children: [
+              Text(
+                _formatDuration(position),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+              Expanded(
+                child: Slider(
+                  value: val,
+                  max: max,
+                  activeColor: theme.seekbarActiveColor,
+                  inactiveColor: theme.seekbarInactiveColor,
+                  onChanged: (value) => controller.seekTo(
+                    Duration(milliseconds: value.toInt()),
+                  ),
+                ),
+              ),
+              Text(
+                _formatDuration(duration),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -374,9 +433,18 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
 
     // Use thumbnailUrl if available, otherwise use url ONLY if it's an image.
     // For video/audio, we shouldn't use the media URL as an image source.
-    final String? effectiveImageUrl = (thumbUrl != null && thumbUrl.isNotEmpty)
+    // For YouTube items without a custom thumbnail, derive one from the
+    // video ID so the strip looks populated even when the caller didn't
+    // supply thumbnailUrl.
+    String? effectiveImageUrl = (thumbUrl != null && thumbUrl.isNotEmpty)
         ? thumbUrl
         : (item.type == GalleryItemType.image && url.isNotEmpty ? url : null);
+    if (effectiveImageUrl == null && item.type == GalleryItemType.youtube) {
+      final id = YoutubePlayer.convertUrlToId(url);
+      if (id != null) {
+        effectiveImageUrl = YoutubePlayer.getThumbnail(videoId: id);
+      }
+    }
 
     if (effectiveImageUrl == null) {
       return Container(
@@ -416,6 +484,8 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
         iconData = Icons.audiotrack;
       case GalleryItemType.image:
         iconData = Icons.image;
+      case GalleryItemType.youtube:
+        iconData = Icons.smart_display;
     }
     return Icon(
       iconData,

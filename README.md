@@ -21,7 +21,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ## ✨ Features
 
-- 🖼️ **Multi-Media Support**: Seamlessly view images, watch videos, and listen to audio.
+- 🖼️ **Multi-Media Support**: Seamlessly view images, watch videos, listen to audio, and play YouTube links — all with the same controls.
 - 🔍 **Pinch-to-Zoom**: Advanced image viewing with double-tap zoom and smooth pinch gestures.
 - 🎞️ **Thumbnail Strip**: Animated, haptic-enabled thumbnail strip for quick navigation.
 - 🖐️ **Swipe-to-Dismiss**: Natural vertical swipe gesture to exit the gallery with dynamic background fading.
@@ -77,6 +77,11 @@ void _openGallery(BuildContext context) {
             type: GalleryItemType.image,
             title: 'Sunset',
           ),
+          GalleryItem(
+            url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+            type: GalleryItemType.youtube,
+            title: 'Big Buck Bunny on YouTube',
+          ),
         ],
         initialIndex: 0,
         onClose: (index) => Navigator.of(context).pop(),
@@ -85,6 +90,14 @@ void _openGallery(BuildContext context) {
   );
 }
 ```
+
+### YouTube items
+
+`GalleryItemType.youtube` accepts any standard YouTube URL form (`youtu.be/ID`, `youtube.com/watch?v=ID`, `/shorts/ID`, `/embed/ID`). The package uses [`youtube_player_flutter`](https://pub.dev/packages/youtube_player_flutter) — the official YouTube IFrame Player API — to drive playback. The gallery seekbar, center play/pause button, and fullscreen `[ ]` button all match the look of regular video items.
+
+Notes:
+- YouTube playback is webview-based, so the package transitively depends on `webview_flutter`. Follow that package's platform setup if you haven't already.
+- Your use of YouTube content is governed by YouTube's Terms of Service — provide attribution and respect creators' embedding settings.
 
 ## ⚙️ Customization
 

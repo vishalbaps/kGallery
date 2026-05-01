@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import 'bloc/gallery_bloc.dart';
 import 'models/gallery_item.dart';
@@ -135,6 +136,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   late GalleryBloc _galleryBloc;
   final GlobalKey _textContentKey = GlobalKey();
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
+  final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier =
+      ValueNotifier(null);
 
   late final Widget _effectiveProgressWidget;
   late final Widget _effectiveThumbProgressWidget;
@@ -216,6 +219,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         enableSwipeToDismiss: widget.enableSwipeToDismiss,
                         slidePageKey: _slidePageKey,
                         activePlayerNotifier: activePlayerNotifier,
+                        activeYoutubeNotifier: activeYoutubeNotifier,
                         onClose: widget.onClose,
                         noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
                         theme: _effectiveTheme,
@@ -239,6 +243,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         horizontalPadding: horizontalPadding,
                         textContentKey: _textContentKey,
                         activePlayerNotifier: activePlayerNotifier,
+                        activeYoutubeNotifier: activeYoutubeNotifier,
                         theme: _effectiveTheme,
                         animateHeightTo: _animateHeightTo,
                       ),
@@ -249,6 +254,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         pageController: _pageController,
                         thumbProgressWidget: _effectiveThumbProgressWidget,
                         activePlayerNotifier: activePlayerNotifier,
+                        activeYoutubeNotifier: activeYoutubeNotifier,
                         theme: _effectiveTheme,
                       ),
                     ],
@@ -377,6 +383,7 @@ class _GalleryOverlayLayer extends StatelessWidget {
   final double horizontalPadding;
   final GlobalKey textContentKey;
   final ValueNotifier<Player?> activePlayerNotifier;
+  final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
   final GalleryTheme theme;
   final void Function(double, double) animateHeightTo;
 
@@ -388,6 +395,7 @@ class _GalleryOverlayLayer extends StatelessWidget {
     required this.horizontalPadding,
     required this.textContentKey,
     required this.activePlayerNotifier,
+    required this.activeYoutubeNotifier,
     required this.theme,
     required this.animateHeightTo,
   });
@@ -400,7 +408,8 @@ class _GalleryOverlayLayer extends StatelessWidget {
         if (currentItem == null) return const SizedBox.shrink();
 
         final bool hasSeekbar = currentItem.type == GalleryItemType.video ||
-            currentItem.type == GalleryItemType.audio;
+            currentItem.type == GalleryItemType.audio ||
+            currentItem.type == GalleryItemType.youtube;
         final bool hasText =
             currentItem.title != null || currentItem.description != null;
 
@@ -411,38 +420,60 @@ class _GalleryOverlayLayer extends StatelessWidget {
         return ValueListenableBuilder<Player?>(
           valueListenable: activePlayerNotifier,
           builder: (context, player, _) {
-            final bool showSeekbar = hasSeekbar && player != null;
-            final double textBottomOffset = (state.isUIVisible && !state.isSliding)
-                ? MediaQuery.of(context).padding.bottom +
-                    thumbnailStripHeight +
-                    (showSeekbar ? seekbarHeight : 0.0)
-                : -500;
-
-            return Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  bottom: textBottomOffset,
-                  left: 0,
-                  right: 0,
-                  child: _GalleryTextPanel(
-                    item: currentItem,
-                    textPanelHeight: state.textPanelHeight,
-                    horizontalPadding: horizontalPadding,
-                    constraints: constraints,
-                    topBarHeight: topBarHeight,
-                    thumbnailStripHeight: thumbnailStripHeight,
-                    textContentKey: textContentKey,
-                    theme: theme,
-                    animateHeightTo: animateHeightTo,
-                  ),
-                ),
-              ],
+            return ValueListenableBuilder<YoutubePlayerController?>(
+              valueListenable: activeYoutubeNotifier,
+              builder: (context, ytController, _) {
+                final bool showSeekbar =
+                    hasSeekbar && (player != null || ytController != null);
+                return _buildTextOverlay(
+                  context,
+                  state,
+                  currentItem,
+                  showSeekbar,
+                  seekbarHeight,
+                );
+              },
             );
           },
         );
       },
+    );
+  }
+
+  Widget _buildTextOverlay(
+    BuildContext context,
+    GalleryState state,
+    GalleryItem currentItem,
+    bool showSeekbar,
+    double seekbarHeight,
+  ) {
+    final double textBottomOffset = (state.isUIVisible && !state.isSliding)
+        ? MediaQuery.of(context).padding.bottom +
+            thumbnailStripHeight +
+            (showSeekbar ? seekbarHeight : 0.0)
+        : -500;
+
+    return Stack(
+      children: [
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          bottom: textBottomOffset,
+          left: 0,
+          right: 0,
+          child: _GalleryTextPanel(
+            item: currentItem,
+            textPanelHeight: state.textPanelHeight,
+            horizontalPadding: horizontalPadding,
+            constraints: constraints,
+            topBarHeight: topBarHeight,
+            thumbnailStripHeight: thumbnailStripHeight,
+            textContentKey: textContentKey,
+            theme: theme,
+            animateHeightTo: animateHeightTo,
+          ),
+        ),
+      ],
     );
   }
 }

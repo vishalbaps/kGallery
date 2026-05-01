@@ -12,6 +12,10 @@ enum GalleryItemType {
 
   /// An audio file (MP3, AAC, etc.).
   audio,
+
+  /// A YouTube video. The [GalleryItem.url] should be any standard YouTube
+  /// link (youtu.be, youtube.com/watch?v=..., /shorts/, /embed/).
+  youtube,
 }
 
 /// Represents a single media item in the gallery.

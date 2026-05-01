@@ -90,6 +90,15 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
               'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=800&fit=crop',
         );
       }
+      if (index == 3) {
+        return const GalleryItem(
+          url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+          type: GalleryItemType.youtube,
+          title: 'Big Buck Bunny (YouTube)',
+          description:
+              'Resolved via youtube_explode_dart and played by media_kit using the same controls as the rest of the gallery.',
+        );
+      }
 
       String? title;
       String? description;
