@@ -1,3 +1,11 @@
+## 1.0.3
+
+- **Change**: Migrated image rendering from `extended_image` to `cached_network_image`. Full-size images and thumbnails now share a disk-backed cache, which dramatically reduces repeat-network fetches when the same item is revisited and shrinks the dependency footprint.
+- **Perf**: New `DeferredInit` widget delays expensive media initialization (`media_kit` `Player` setup, YouTube WebView, audio playback) by 150 ms inside the `PageView`. Pages scrolled past quickly never instantiate a player, eliminating wasted network calls and AVAudioSession churn during fast swipes.
+- **Refactor**: Image viewing was split into focused widgets — `GalleryImageItem`, `ZoomableImage`, `DismissibleDragArea`, and `ZoomAwarePageView`. Zoom is now backed by Flutter's `InteractiveViewer` (with a `ValueNotifier<double>` exposing the current scale), and the parent `PageView` automatically disables horizontal swipe while zoomed.
+- **Improve**: Vertical drag-to-dismiss is now a dedicated `DismissibleDragArea` recognizer that reports normalized drag progress (0.0–1.0) so the backdrop can fade in sync with the gesture, with a velocity-based dismiss in addition to the existing distance threshold.
+- **Deps**: Removed `extended_image`. Added `cached_network_image: ^3.4.1`.
+
 ## 1.0.2
 
 - **New**: `GalleryItemType.youtube` — play any YouTube URL (`youtu.be/...`, `youtube.com/watch?v=...`, `/shorts/...`, `/embed/...`) directly in the gallery with the same play/pause button, buffering indicator, and themed seekbar as regular video items.

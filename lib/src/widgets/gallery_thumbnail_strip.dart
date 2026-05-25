@@ -1,8 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:extended_image/extended_image.dart';
 import 'package:k_gallery/k_gallery.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -14,7 +14,7 @@ class GalleryThumbnailStrip extends StatefulWidget {
   final bool enableHapticFeedback;
 
   /// Controller for the main page view to sync scrolling.
-  final ExtendedPageController pageController;
+  final PageController pageController;
 
   /// Custom loading widget for thumbnails.
   final Widget? thumbProgressWidget;
@@ -454,24 +454,16 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
       );
     }
 
-    return ExtendedImage.network(
-      effectiveImageUrl,
+    return CachedNetworkImage(
+      imageUrl: effectiveImageUrl,
       fit: BoxFit.cover,
-      cache: true,
-      loadStateChanged: (extendedImageState) {
-        switch (extendedImageState.extendedImageLoadState) {
-          case LoadState.loading:
-            return widget.thumbProgressWidget;
-          case LoadState.failed:
-            return Container(
-              color: Colors.white.withValues(alpha: 0.1),
-              alignment: Alignment.center,
-              child: _buildTypeIcon(item.type, dimensions.unselectedSize * 0.4),
-            );
-          case LoadState.completed:
-            return null;
-        }
-      },
+      placeholder: (context, _) =>
+          widget.thumbProgressWidget ?? const SizedBox.shrink(),
+      errorWidget: (context, _, __) => Container(
+        color: Colors.white.withValues(alpha: 0.1),
+        alignment: Alignment.center,
+        child: _buildTypeIcon(item.type, dimensions.unselectedSize * 0.4),
+      ),
     );
   }
 

@@ -1,46 +1,37 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:extended_image/extended_image.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 import '../models/gallery_theme.dart';
+import 'gallery/deferred_init.dart';
+import 'gallery/dismissible_drag_area.dart';
+import 'gallery/gallery_image_item.dart';
+import 'gallery/zoom_aware_page_view.dart';
 import 'media/gallery_audio_item.dart';
 import 'media/gallery_video_item.dart';
 import 'media/gallery_youtube_item.dart';
 
-/// Internal widget for displaying the main media content with gestures.
+/// Thin orchestrator that hosts the swipable gallery page view.
+///
+/// Owns:
+///   - The current item's zoom scale (so it can disable page swipe + drag dismiss).
+///   - The background fade opacity during drag-to-dismiss.
+///
+/// Delegates rendering to type-specific widgets (image / video / audio /
+/// youtube) and reusable building blocks ([GalleryImageItem],
+/// [DismissibleDragArea], [ZoomAwarePageView]).
 class GalleryImageViewer extends StatefulWidget {
-  /// Controller for the page view.
-  final ExtendedPageController pageController;
-
-  /// Custom loading widget.
+  final PageController pageController;
   final Widget? progressWidget;
-
-  /// Whether zoom gestures are enabled.
   final bool enableZoom;
-
-  /// Whether swipe-to-dismiss is enabled.
   final bool enableSwipeToDismiss;
-
-  /// Key to control the slide page state.
-  final GlobalKey<ExtendedImageSlidePageState> slidePageKey;
-
-  /// Notifier for the currently active media_kit player (video/audio items).
   final ValueNotifier<Player?> activePlayerNotifier;
-
-  /// Notifier for the currently active YouTube player (youtube items).
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
-
-  /// Callback for when the viewer is closed.
   final void Function(int currentIndex)? onClose;
-
-  /// Custom message shown when no internet is detected for remote media.
   final String? noInternetMessage;
-
-  /// Theme forwarded to media items for fullscreen seekbar styling.
   final GalleryTheme? theme;
 
   const GalleryImageViewer({
@@ -49,7 +40,6 @@ class GalleryImageViewer extends StatefulWidget {
     this.progressWidget,
     required this.enableZoom,
     required this.enableSwipeToDismiss,
-    required this.slidePageKey,
     required this.activePlayerNotifier,
     required this.activeYoutubeNotifier,
     this.onClose,
@@ -61,305 +51,178 @@ class GalleryImageViewer extends StatefulWidget {
   State<GalleryImageViewer> createState() => _GalleryImageViewerState();
 }
 
-class _GalleryImageViewerState extends State<GalleryImageViewer>
-    with TickerProviderStateMixin {
-  late AnimationController _doubleTapAnimationController;
-  Animation<double>? _doubleTapAnimation;
-  VoidCallback? _doubleTapAnimationListener;
-  Timer? _singleTapTimer;
+class _GalleryImageViewerState extends State<GalleryImageViewer> {
+  /// Delay before media (video/audio/youtube) widgets actually initialize.
+  /// Skipped entirely if the user scrolls past the page before it elapses.
+  static const Duration _mediaInitDelay = Duration(milliseconds: 150);
 
-  int _pointersCount = 0;
-  double _dragStartX = 0.0;
-  double _dragStartY = 0.0;
-  DateTime _dragStartTime = DateTime.now();
-  DateTime? _lastTapEndTime;
-  bool _isPinching = false;
+  /// Scale of the currently visible item (1.0 = not zoomed).
+  final ValueNotifier<double> _currentScale = ValueNotifier<double>(1.0);
 
-  /// Track gesture states for each page to handle zoom levels accurately across the gallery.
-  final Map<int, GlobalKey<ExtendedImageGestureState>> _gestureKeys = {};
+  /// Background opacity for drag-to-dismiss visual feedback (1.0 = solid black).
+  final ValueNotifier<double> _bgOpacity = ValueNotifier<double>(1.0);
 
-  @override
-  void initState() {
-    super.initState();
-    _doubleTapAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-    );
+  void _resetScale() {
+    _currentScale.value = 1.0;
+  }
+
+  void _handleDismiss(BuildContext context) {
+    final currentIndex = context.read<GalleryBloc>().state.currentIndex;
+    if (widget.onClose != null) {
+      widget.onClose!(currentIndex);
+    } else {
+      Navigator.of(context).maybePop(currentIndex);
+    }
+  }
+
+  void _handleDragProgress(BuildContext context, double progress) {
+    _bgOpacity.value = (1.0 - progress).clamp(0.0, 1.0);
+    final bloc = context.read<GalleryBloc>();
+    final shouldBeSliding = progress > 0.01;
+    if (bloc.state.isSliding != shouldBeSliding) {
+      bloc.add(GallerySetSliding(shouldBeSliding));
+    }
+  }
+
+  void _handleDragEnded(BuildContext context) {
+    _bgOpacity.value = 1.0;
+    final bloc = context.read<GalleryBloc>();
+    if (bloc.state.isSliding) {
+      bloc.add(GallerySetSliding(false));
+    }
+  }
+
+  void _toggleUI(BuildContext context) {
+    context.read<GalleryBloc>().add(GalleryToggleUI());
+  }
+
+  void _setUIVisible(BuildContext context, bool visible) {
+    final bloc = context.read<GalleryBloc>();
+    if (bloc.state.isUIVisible != visible) {
+      bloc.add(GalleryToggleUI(isVisible: visible));
+    }
   }
 
   @override
   void dispose() {
-    _doubleTapAnimationController.dispose();
-    _singleTapTimer?.cancel();
+    _currentScale.dispose();
+    _bgOpacity.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<GalleryBloc, GalleryState>(
-      // The page view subtree only needs to rebuild when the list of items
-      // changes. Bloc events for UI toggling, sliding, text-panel resizing,
-      // and current-index changes are handled elsewhere (page controller
-      // for index, scoped widgets for the rest), so excluding them from
-      // this rebuild avoids tearing down and re-creating every visible
-      // item builder on each tap or drag.
-      buildWhen: (prev, curr) =>
-          !identical(prev.items, curr.items) ||
-          prev.items.length != curr.items.length,
-      builder: (context, state) {
-        return Listener(
-          onPointerDown: (event) {
-            _pointersCount++;
-            if (_pointersCount > 1) {
-              _isPinching = true;
-              if (context.read<GalleryBloc>().state.isUIVisible) {
-                context.read<GalleryBloc>().add(
-                      GalleryToggleUI(isVisible: false),
-                    );
-              }
-            } else if (_pointersCount == 1) {
-              _singleTapTimer?.cancel();
-              _dragStartX = event.position.dx;
-              _dragStartY = event.position.dy;
-              _dragStartTime = DateTime.now();
-            }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Background that fades with drag-to-dismiss progress.
+        ValueListenableBuilder<double>(
+          valueListenable: _bgOpacity,
+          builder: (context, opacity, _) {
+            return ColoredBox(
+              color: (widget.theme?.backgroundColor ?? Colors.black)
+                  .withValues(alpha: opacity),
+            );
           },
-          onPointerUp: (event) {
-            _pointersCount--;
-            if (_pointersCount == 0) {
-              if (_isPinching) {
-                _isPinching = false;
-                // Re-evaluate UI visibility after a pinch gesture ends.
-                final bloc = context.read<GalleryBloc>();
-                Future.delayed(const Duration(milliseconds: 50), () {
-                  if (mounted) {
-                    final currentIndex = bloc.state.currentIndex;
-                    final gestureState =
-                        _gestureKeys[currentIndex]?.currentState;
-                    final scale =
-                        gestureState?.gestureDetails?.totalScale ?? 1.0;
-                    if (scale <= 1.0) {
-                      bloc.add(
-                        GalleryToggleUI(isVisible: true),
-                      );
-                    }
-                  }
-                });
-                return;
-              }
-
-              final now = DateTime.now();
-              final dx = (event.position.dx - _dragStartX).abs();
-              final dyVertical = event.position.dy - _dragStartY;
-              final dyAbs = dyVertical.abs();
-              final time = now.difference(_dragStartTime).inMilliseconds;
-
-              if (widget.slidePageKey.currentState?.isSliding ?? false) return;
-
-              // Detect if this is a second tap for double-tap zoom handling.
-              bool isSecondTap = _lastTapEndTime != null &&
-                  now.difference(_lastTapEndTime!).inMilliseconds < 300;
-              _lastTapEndTime = now;
-
-              // --- Handle UI Toggling ---
-              if (dx < 10 && dyAbs < 10 && time < 300) {
-                if (isSecondTap) {
-                  _singleTapTimer?.cancel();
-                } else {
-                  final blocState = context.read<GalleryBloc>().state;
-                  final currentItem = blocState.items.isNotEmpty
-                      ? blocState.items[blocState.currentIndex]
-                      : null;
-                  if (currentItem?.type == GalleryItemType.image) {
-                    _singleTapTimer = Timer(
-                      const Duration(milliseconds: 250),
-                      () {
-                        if (mounted) {
-                          context.read<GalleryBloc>().add(GalleryToggleUI());
-                        }
-                      },
-                    );
-                  }
-                }
-                return;
-              }
-
-              if (widget.enableSwipeToDismiss &&
-                  dyVertical > 150 &&
-                  time < 400 &&
-                  dyAbs > dx * 3.0 &&
-                  dx < 50) {
-                if (mounted) {
-                  final currentIndex =
-                      context.read<GalleryBloc>().state.currentIndex;
-                  if (widget.onClose != null) {
-                    widget.onClose!(currentIndex);
-                  } else {
-                    Navigator.of(context).maybePop(currentIndex);
-                  }
-                }
-              }
-            }
-          },
-          onPointerCancel: (event) => _pointersCount--,
-          child: ExtendedImageSlidePage(
-            key: widget.slidePageKey,
-            slideAxis: SlideAxis.both,
-            onSlidingPage: (state) {
-              final isSliding = state.isSliding;
-              if (context.read<GalleryBloc>().state.isSliding != isSliding) {
-                context.read<GalleryBloc>().add(GallerySetSliding(isSliding));
-              }
-            },
-            slidePageBackgroundHandler: (Offset offset, Size pageSize) {
-              double opacity = 0.0;
-              if (pageSize.height > 0) {
-                opacity =
-                    1.0 - (offset.dy.abs() / pageSize.height).clamp(0.0, 1.0);
-              }
-              return Colors.black.withValues(alpha: opacity);
-            },
-            child: ExtendedImageGesturePageView.builder(
-              itemCount: state.items.length,
+        ),
+        BlocBuilder<GalleryBloc, GalleryState>(
+          buildWhen: (prev, curr) =>
+              !identical(prev.items, curr.items) ||
+              prev.items.length != curr.items.length,
+          builder: (context, state) {
+            return ZoomAwarePageView(
               controller: widget.pageController,
-              onPageChanged: (int index) {
+              itemCount: state.items.length,
+              currentItemScale: _currentScale,
+              onPageChanged: (index) {
+                _resetScale();
                 context.read<GalleryBloc>().add(GalleryIndexChanged(index));
               },
-              itemBuilder: (BuildContext context, int index) {
-                final item = state.items[index];
-                final bloc = context.read<GalleryBloc>();
-
-                Widget? mediaChild;
-                switch (item.type) {
-                  case GalleryItemType.video:
-                    mediaChild = GalleryVideoItem(
-                      item: item,
-                      index: index,
-                      activePlayerNotifier: widget.activePlayerNotifier,
-                      galleryBloc: bloc,
-                      noInternetMessage: widget.noInternetMessage,
-                      theme: widget.theme,
-                    );
-                  case GalleryItemType.audio:
-                    mediaChild = GalleryAudioItem(
-                      item: item,
-                      index: index,
-                      activePlayerNotifier: widget.activePlayerNotifier,
-                      galleryBloc: bloc,
-                      noInternetMessage: widget.noInternetMessage,
-                    );
-                  case GalleryItemType.youtube:
-                    mediaChild = GalleryYoutubeItem(
-                      item: item,
-                      index: index,
-                      activeYoutubeNotifier: widget.activeYoutubeNotifier,
-                      galleryBloc: bloc,
-                      noInternetMessage: widget.noInternetMessage,
-                      theme: widget.theme,
-                    );
-                  case GalleryItemType.image:
-                    mediaChild = null;
-                }
-
-                if (mediaChild != null) {
-                  if (widget.enableSwipeToDismiss) {
-                    return ExtendedImageSlidePageHandler(
-                      heroBuilderForSlidingPage: (Widget result) {
-                        return Hero(tag: item.url, child: result);
-                      },
-                      child: mediaChild,
-                    );
-                  }
-                  return mediaChild;
-                }
-
-                final gestureKey = _gestureKeys.putIfAbsent(
-                  index,
-                  () => GlobalKey<ExtendedImageGestureState>(),
-                );
-
-                return ExtendedImage.network(
-                  item.url,
-                  extendedImageGestureKey: gestureKey,
-                  fit: BoxFit.contain,
-                  mode: widget.enableZoom
-                      ? ExtendedImageMode.gesture
-                      : ExtendedImageMode.none,
-                  enableSlideOutPage: widget.enableSwipeToDismiss,
-                  loadStateChanged: (state) {
-                    if (state.extendedImageLoadState == LoadState.loading) {
-                      return widget.progressWidget ??
-                          const Center(
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                            ),
-                          );
-                    }
-                    return null;
-                  },
-                  initGestureConfigHandler: (state) {
-                    return GestureConfig(
-                      minScale: 0.9,
-                      animationMinScale: 0.7,
-                      maxScale: 3.0,
-                      animationMaxScale: 3.5,
-                      speed: 1.0,
-                      inertialSpeed: 100.0,
-                      initialScale: 1.0,
-                      inPageView: true,
-                    );
-                  },
-                  onDoubleTap: (ExtendedImageGestureState state) {
-                    if (!widget.enableZoom) return;
-
-                    var pointerDownPosition = state.pointerDownPosition;
-                    var begin = state.gestureDetails?.totalScale ?? 1.0;
-                    double end = (begin == 1.0) ? 2.5 : 1.0;
-
-                    _doubleTapAnimation?.removeListener(
-                      _doubleTapAnimationListener!,
-                    );
-                    _doubleTapAnimationController.stop();
-                    _doubleTapAnimationController.reset();
-
-                    _doubleTapAnimationListener = () {
-                      state.handleDoubleTap(
-                        scale: _doubleTapAnimation!.value,
-                        doubleTapPosition: pointerDownPosition,
-                      );
-                    };
-
-                    _doubleTapAnimation = _doubleTapAnimationController.drive(
-                      Tween<double>(
-                        begin: begin,
-                        end: end,
-                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-                    );
-
-                    _doubleTapAnimation!.addListener(
-                      _doubleTapAnimationListener!,
-                    );
-                    _doubleTapAnimationController.forward();
-
-                    if (end == 1.0) {
-                      context.read<GalleryBloc>().add(
-                            GalleryToggleUI(isVisible: true),
-                          );
-                    } else {
-                      context.read<GalleryBloc>().add(
-                            GalleryToggleUI(isVisible: false),
-                          );
-                    }
-                  },
-                  heroBuilderForSlidingPage: (Widget result) {
-                    return Hero(tag: item.url, child: result);
-                  },
-                );
+              itemBuilder: (context, index) {
+                return _buildPage(context, state.items[index], index);
               },
-            ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPage(BuildContext context, GalleryItem item, int index) {
+    final bloc = context.read<GalleryBloc>();
+
+    Widget content;
+    switch (item.type) {
+      case GalleryItemType.image:
+        content = GalleryImageItem(
+          item: item,
+          scaleNotifier: _currentScale,
+          enableZoom: widget.enableZoom,
+          progressWidget: widget.progressWidget,
+          onZoomIn: () => _setUIVisible(context, false),
+          onZoomOut: () => _setUIVisible(context, true),
+        );
+        // Tap toggles UI on image pages only (media items have their own tap).
+        content = GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => _toggleUI(context),
+          child: content,
+        );
+      case GalleryItemType.video:
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryVideoItem(
+            item: item,
+            index: index,
+            activePlayerNotifier: widget.activePlayerNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+            theme: widget.theme,
           ),
         );
+      case GalleryItemType.audio:
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryAudioItem(
+            item: item,
+            index: index,
+            activePlayerNotifier: widget.activePlayerNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+          ),
+        );
+      case GalleryItemType.youtube:
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryYoutubeItem(
+            item: item,
+            index: index,
+            activeYoutubeNotifier: widget.activeYoutubeNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+            theme: widget.theme,
+          ),
+        );
+    }
+
+    final hero = Hero(tag: item.url, child: content);
+
+    if (!widget.enableSwipeToDismiss) {
+      return hero;
+    }
+
+    return DismissibleDragArea(
+      enabled: true,
+      scaleNotifier: _currentScale,
+      onDismiss: () => _handleDismiss(context),
+      onDragProgress: (progress) => _handleDragProgress(context, progress),
+      onDragActiveChanged: (active) {
+        if (!active) _handleDragEnded(context);
       },
+      child: hero,
     );
   }
 }
