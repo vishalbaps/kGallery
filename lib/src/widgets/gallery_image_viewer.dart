@@ -6,6 +6,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../bloc/gallery_bloc.dart';
 import '../models/gallery_item.dart';
 import '../models/gallery_theme.dart';
+import 'gallery/deferred_init.dart';
 import 'gallery/dismissible_drag_area.dart';
 import 'gallery/gallery_image_item.dart';
 import 'gallery/zoom_aware_page_view.dart';
@@ -51,6 +52,10 @@ class GalleryImageViewer extends StatefulWidget {
 }
 
 class _GalleryImageViewerState extends State<GalleryImageViewer> {
+  /// Delay before media (video/audio/youtube) widgets actually initialize.
+  /// Skipped entirely if the user scrolls past the page before it elapses.
+  static const Duration _mediaInitDelay = Duration(milliseconds: 150);
+
   /// Scale of the currently visible item (1.0 = not zoomed).
   final ValueNotifier<double> _currentScale = ValueNotifier<double>(1.0);
 
@@ -164,30 +169,42 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
           child: content,
         );
       case GalleryItemType.video:
-        content = GalleryVideoItem(
-          item: item,
-          index: index,
-          activePlayerNotifier: widget.activePlayerNotifier,
-          galleryBloc: bloc,
-          noInternetMessage: widget.noInternetMessage,
-          theme: widget.theme,
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryVideoItem(
+            item: item,
+            index: index,
+            activePlayerNotifier: widget.activePlayerNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+            theme: widget.theme,
+          ),
         );
       case GalleryItemType.audio:
-        content = GalleryAudioItem(
-          item: item,
-          index: index,
-          activePlayerNotifier: widget.activePlayerNotifier,
-          galleryBloc: bloc,
-          noInternetMessage: widget.noInternetMessage,
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryAudioItem(
+            item: item,
+            index: index,
+            activePlayerNotifier: widget.activePlayerNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+          ),
         );
       case GalleryItemType.youtube:
-        content = GalleryYoutubeItem(
-          item: item,
-          index: index,
-          activeYoutubeNotifier: widget.activeYoutubeNotifier,
-          galleryBloc: bloc,
-          noInternetMessage: widget.noInternetMessage,
-          theme: widget.theme,
+        content = DeferredInit(
+          delay: _mediaInitDelay,
+          placeholder: widget.progressWidget,
+          builder: (_) => GalleryYoutubeItem(
+            item: item,
+            index: index,
+            activeYoutubeNotifier: widget.activeYoutubeNotifier,
+            galleryBloc: bloc,
+            noInternetMessage: widget.noInternetMessage,
+            theme: widget.theme,
+          ),
         );
     }
 
