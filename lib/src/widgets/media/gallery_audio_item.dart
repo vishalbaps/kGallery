@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:extended_image/extended_image.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
@@ -206,19 +206,14 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
     final thumb = widget.item.thumbnailUrl;
     return Center(
       child: thumb != null
-          ? ExtendedImage.network(
-              thumb,
+          ? CachedNetworkImage(
+              imageUrl: thumb,
               fit: BoxFit.contain,
-              loadStateChanged: (state) {
-                if (state.extendedImageLoadState == LoadState.failed) {
-                  return const Icon(
-                    Icons.audiotrack,
-                    size: 100,
-                    color: Colors.white54,
-                  );
-                }
-                return null;
-              },
+              errorWidget: (context, _, __) => const Icon(
+                Icons.audiotrack,
+                size: 100,
+                color: Colors.white54,
+              ),
             )
           : const Icon(
               Icons.audiotrack,

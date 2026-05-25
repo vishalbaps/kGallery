@@ -1,6 +1,5 @@
 import 'dart:ui';
 
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -131,8 +130,7 @@ class KGallery extends StatefulWidget {
 }
 
 class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
-  late ExtendedPageController _pageController;
-  final GlobalKey<ExtendedImageSlidePageState> _slidePageKey = GlobalKey<ExtendedImageSlidePageState>();
+  late PageController _pageController;
   late GalleryBloc _galleryBloc;
   final GlobalKey _textContentKey = GlobalKey();
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
@@ -167,7 +165,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
           child: Container(color: Colors.white),
         );
 
-    _pageController = ExtendedPageController(initialPage: widget.initialIndex);
+    _pageController = PageController(initialPage: widget.initialIndex);
     _galleryBloc = GalleryBloc(
       initialItems: widget.contentList,
       initialIndex: widget.initialIndex,
@@ -217,7 +215,6 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         progressWidget: _effectiveProgressWidget,
                         enableZoom: widget.enableZoom,
                         enableSwipeToDismiss: widget.enableSwipeToDismiss,
-                        slidePageKey: _slidePageKey,
                         activePlayerNotifier: activePlayerNotifier,
                         activeYoutubeNotifier: activeYoutubeNotifier,
                         onClose: widget.onClose,
@@ -377,7 +374,7 @@ class _GalleryTopBar extends StatelessWidget {
 
 class _GalleryOverlayLayer extends StatelessWidget {
   final BoxConstraints constraints;
-  final ExtendedPageController pageController;
+  final PageController pageController;
   final double thumbnailStripHeight;
   final double topBarHeight;
   final double horizontalPadding;
