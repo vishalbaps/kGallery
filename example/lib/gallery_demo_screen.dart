@@ -1,7 +1,15 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:k_gallery/k_gallery.dart';
+
+/// A small (160×160) four-quadrant PNG embedded inline as a base64 data URI.
+/// Demonstrates that kGallery renders base64 images in both the full-screen
+/// viewer and the thumbnail strip — no network request is made for this item.
+const String kBase64SampleImage =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAADMElEQVR4nOzVwQnAIBQFQYXff81RUkQCOyDj1YOPnbXWPmeTRef+/3O/OyBjzh3CD95BfqICMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMO0TAAD//2Anhf4QtqobAAAAAElFTkSuQmCC';
 
 class DemoGalleryScreen extends StatefulWidget {
   static const id = 'k_gallery_demo';
@@ -52,6 +60,50 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
     super.dispose();
   }
 
+  /// Grid thumbnail for an image-bearing item. Branches on the source the same
+  /// way kGallery does internally: an inline base64 data URI is decoded and
+  /// drawn with [Image.memory]; anything else is fetched via
+  /// [CachedNetworkImage]. Mirrors how a host app builds its own grid.
+  Widget _buildGridThumbnail(GalleryItem item) {
+    final source = item.thumbnailUrl ?? item.url;
+
+    Widget typeIconFallback() => Container(
+      color: Colors.grey[900],
+      alignment: Alignment.center,
+      child: Icon(
+        item.type == GalleryItemType.video
+            ? Icons.videocam
+            : item.type == GalleryItemType.audio
+            ? Icons.audiotrack
+            : Icons.image_not_supported,
+        size: 32,
+        color: Colors.white54,
+      ),
+    );
+
+    if (source.contains(';base64,')) {
+      try {
+        return Image.memory(
+          base64Decode(source.split(';base64,').last),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => typeIconFallback(),
+        );
+      } catch (_) {
+        return typeIconFallback();
+      }
+    }
+
+    return CachedNetworkImage(
+      imageUrl: source,
+      fit: BoxFit.cover,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[900],
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      errorWidget: (context, url, error) => typeIconFallback(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<GalleryItem> contentList = List.generate(100, (index) {
@@ -97,6 +149,17 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           title: 'Big Buck Bunny (YouTube)',
           description:
               'Resolved via youtube_explode_dart and played by media_kit using the same controls as the rest of the gallery.',
+        );
+      }
+      if (index == 4) {
+        return const GalleryItem(
+          url: kBase64SampleImage,
+          type: GalleryItemType.image,
+          title: 'Base64 Image (local)',
+          description:
+              'This image is passed as an inline base64 data URI — no network '
+              'request is made. It renders in both the grid thumbnail and the '
+              'full-screen viewer.',
         );
       }
 
@@ -179,29 +242,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
                             color: Colors.white54,
                           ),
                         )
-                      : CachedNetworkImage(
-                          imageUrl: item.thumbnailUrl ?? item.url,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[900],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[900],
-                            alignment: Alignment.center,
-                            child: Icon(
-                              item.type == GalleryItemType.video
-                                  ? Icons.videocam
-                                  : item.type == GalleryItemType.audio
-                                  ? Icons.audiotrack
-                                  : Icons.image_not_supported,
-                              size: 32,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        ),
+                      : _buildGridThumbnail(item),
                   if (item.type != GalleryItemType.image &&
                       item.thumbnailUrl != null)
                     Positioned(

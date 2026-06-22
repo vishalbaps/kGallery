@@ -1,12 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:k_gallery/k_gallery.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../bloc/gallery_bloc.dart';
+import '../utils/image_source.dart';
 
 /// Internal widget for displaying the scrollable thumbnail strip.
 class GalleryThumbnailStrip extends StatefulWidget {
@@ -454,9 +454,12 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
       );
     }
 
-    return CachedNetworkImage(
-      imageUrl: effectiveImageUrl,
+    return galleryImage(
+      source: effectiveImageUrl,
       fit: BoxFit.cover,
+      // Cap the decoded bitmap for base64 thumbnails so a large data URI
+      // isn't decoded at full resolution just to fill the strip.
+      cacheWidth: 320,
       placeholder: (context, _) =>
           widget.thumbProgressWidget ?? const SizedBox.shrink(),
       errorWidget: (context, _, __) => Container(

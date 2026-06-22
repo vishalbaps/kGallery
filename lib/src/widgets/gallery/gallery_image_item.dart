@@ -1,11 +1,12 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/gallery_item.dart';
+import '../../utils/image_source.dart';
 import 'zoomable_image.dart';
 
-/// Renders a single image gallery item using [CachedNetworkImage], optionally
-/// wrapped in [ZoomableImage] for pinch + double-tap zoom.
+/// Renders a single image gallery item (network URL or base64 data URI via
+/// [galleryImage]), optionally wrapped in [ZoomableImage] for pinch +
+/// double-tap zoom.
 ///
 /// This widget is purely visual — it does not handle page swiping or
 /// dismiss gestures. Those are owned by parent widgets.
@@ -29,8 +30,8 @@ class GalleryImageItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget image = CachedNetworkImage(
-      imageUrl: item.url,
+    final Widget image = galleryImage(
+      source: item.url,
       fit: BoxFit.contain,
       width: double.infinity,
       height: double.infinity,
