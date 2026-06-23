@@ -71,44 +71,83 @@ On **Android**, internet permission is required (typically already present in mo
 
 ## 🛠️ Usage
 
+Use `KGallery.show(...)` — it presents the gallery on a **transparent route**, so
+the screen behind stays visible through the background fade when the user swipes
+down to dismiss (see [Swipe-to-dismiss](#-swipe-to-dismiss)). It returns the
+last-viewed index.
+
 ```dart
 import 'package:k_gallery/k_gallery.dart';
 
-void _openGallery(BuildContext context) {
-  Navigator.of(context).push(
-    MaterialPageRoute(
-      builder: (context) => KGallery(
-        contentList: [
-          GalleryItem(
-            url: 'https://example.com/video.mp4',
-            type: GalleryItemType.video,
-            title: 'Big Buck Bunny',
-            description: 'A classic animation.',
-            thumbnailUrl: 'https://example.com/thumb.jpg',
-          ),
-          GalleryItem(
-            url: 'https://example.com/audio.mp3',
-            type: GalleryItemType.audio,
-            title: 'My Track',
-            thumbnailUrl: 'https://example.com/album_art.jpg',
-          ),
-          GalleryItem(
-            url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-            type: GalleryItemType.youtube,
-            title: 'Big Buck Bunny on YouTube',
-          ),
-          GalleryItem(
-            url: 'https://example.com/photo.jpg',
-            type: GalleryItemType.image,
-            title: 'Sunset',
-          ),
-        ],
-        initialIndex: 0,
-        onClose: (index) => Navigator.of(context).pop(),
+Future<void> _openGallery(BuildContext context) async {
+  final lastIndex = await KGallery.show(
+    context,
+    contentList: [
+      GalleryItem(
+        url: 'https://example.com/video.mp4',
+        type: GalleryItemType.video,
+        title: 'Big Buck Bunny',
+        description: 'A classic animation.',
+        thumbnailUrl: 'https://example.com/thumb.jpg',
       ),
-    ),
+      GalleryItem(
+        url: 'https://example.com/audio.mp3',
+        type: GalleryItemType.audio,
+        title: 'My Track',
+        thumbnailUrl: 'https://example.com/album_art.jpg',
+      ),
+      GalleryItem(
+        url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+        type: GalleryItemType.youtube,
+        title: 'Big Buck Bunny on YouTube',
+      ),
+      GalleryItem(
+        url: 'https://example.com/photo.jpg',
+        type: GalleryItemType.image,
+        title: 'Sunset',
+      ),
+    ],
+    initialIndex: 0,
   );
 }
+```
+
+### 👇 Swipe-to-dismiss
+
+As you drag down to close the gallery, its background fades from opaque to
+transparent so the screen underneath shows through. This only works on a
+**non-opaque route**, which is why `KGallery.show(...)` is the recommended
+entry point — a regular opaque route (e.g. `MaterialPageRoute`) stops Flutter
+from painting the screen below, so the fade would reveal only black.
+
+If you must push `KGallery` yourself instead of using `KGallery.show`, push it
+on a non-opaque route:
+
+```dart
+// Imperative Navigator
+Navigator.of(context).push(
+  PageRouteBuilder(
+    opaque: false, // listing screen stays visible behind the fade
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 250),
+    pageBuilder: (context, animation, _) => FadeTransition(
+      opacity: animation,
+      child: KGallery(contentList: items, initialIndex: 0),
+    ),
+  ),
+);
+
+// go_router — use a CustomTransitionPage with opaque: false
+GoRoute(
+  path: '/gallery',
+  pageBuilder: (context, state) => CustomTransitionPage(
+    opaque: false,
+    barrierColor: Colors.transparent,
+    transitionsBuilder: (context, animation, _, child) =>
+        FadeTransition(opacity: animation, child: child),
+    child: KGallery(contentList: items, initialIndex: 0),
+  ),
+);
 ```
 
 ### YouTube items

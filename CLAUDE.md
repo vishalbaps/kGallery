@@ -29,8 +29,8 @@ kGallery/
 │           └── gallery_media_item_widget.dart  # Video/audio playback widget (media_kit)
 ├── example/
 │   └── lib/
-│       ├── main.dart                           # go_router setup, two routes
-│       └── gallery_demo_screen.dart            # DemoGalleryScreen (100 items) + KGalleryDetailScreen
+│       ├── main.dart                           # go_router setup, single grid route
+│       └── gallery_demo_screen.dart            # DemoGalleryScreen (100 items); opens gallery via KGallery.show(...)
 ├── test/
 │   └── k_gallery_test.dart                     # 2 tests: initial display, assertion on empty list
 ├── pubspec.yaml
@@ -65,6 +65,7 @@ kGallery/
 - **Required**: `List<GalleryItem> contentList`, `int initialIndex`
 - **Optional**: `progressWidget`, `thumbProgressWidget`, `enableZoom` (true), `enableSwipeToDismiss` (true), `enableHapticFeedback` (true), `leading`, `title`, `noInternetMessage`, `onIndexChanged(int)`, `onClose(int)`, `theme`, `actionMenuBuilder(BuildContext, int, List<GalleryItem>)`
 - **Static**: `KGallery.ensureInitialized()` — must call before `runApp()` for media_kit
+- **Static**: `KGallery.show(context, {contentList, initialIndex, ...})` → `Future<int?>` — recommended entry point. Pushes a **non-opaque** `PageRouteBuilder` (`opaque: false`, transparent barrier, fade transition) wrapping `KGallery`, so the screen behind stays visible through the background fade during swipe-to-dismiss. Mirrors the constructor's params; returns the last-viewed index. Does NOT inject `onClose` (the default `Navigator.maybePop(currentIndex)` path returns the index; injecting one would double-pop via `PopScope`).
 
 ### `GalleryItem`
 - Fields: `String url` (required), `GalleryItemType type` (default: image), `String? thumbnailUrl`, `String? title`, `String? description`
@@ -145,7 +146,7 @@ static const minTextPanelHeight = 70.0
 ## Example App
 - 100 items: item[0] = video (Big Buck Bunny), item[1] = audio (MP3), items[2-99] = loremflickr images
 - Grid: 6 cols (≥800dp), 5 cols (≥600dp), 3 cols (phone)
-- Navigation: go_router with `/k_gallery_demo` and `/k_gallery_detail`
+- Navigation: go_router with a single `/k_gallery_demo` grid route; tapping a grid item opens the gallery via `KGallery.show(...)` (imperative transparent route — no separate detail route/widget)
 - Hero animations between grid thumbnails and gallery
 
 ---

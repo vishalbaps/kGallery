@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:k_gallery/k_gallery.dart';
 
 /// A small (160×160) four-quadrant PNG embedded inline as a base64 data URI.
@@ -101,6 +100,79 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
         child: const Center(child: CircularProgressIndicator()),
       ),
       errorWidget: (context, url, error) => typeIconFallback(),
+    );
+  }
+
+  /// Opens the gallery via [KGallery.show], which presents it on a transparent
+  /// (non-opaque) route so this grid stays visible through the background fade
+  /// when the user swipes down to dismiss. The returned index scrolls the grid
+  /// to the last-viewed item on close.
+  Future<void> _openGallery(List<GalleryItem> contentList, int index) async {
+    final result = await KGallery.show(
+      context,
+      contentList: contentList,
+      initialIndex: index,
+      onIndexChanged: (newIndex) =>
+          _scrollToIndex(newIndex, _getCrossAxisCount(context)),
+      actionMenuBuilder: _buildActionMenu,
+      progressWidget: Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      _scrollToIndex(result, _getCrossAxisCount(context));
+    }
+  }
+
+  Widget _buildActionMenu(
+    BuildContext context,
+    int currentIndex,
+    List<GalleryItem> items,
+  ) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final currentItem = items[currentIndex];
+    return PopupMenuButton<String>(
+      color: Colors.black,
+      icon: const Icon(Icons.more_vert, color: Colors.white),
+      onSelected: (value) {
+        switch (value) {
+          case 'download':
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Downloading: ${currentItem.title ?? "Image"}'),
+              ),
+            );
+            break;
+          case 'slideshow':
+            break;
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'slideshow',
+          child: Row(
+            children: [
+              Icon(Icons.slideshow, size: 20, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Slideshow', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'download',
+          child: Row(
+            children: [
+              Icon(Icons.download, size: 20, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Download Image', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -208,22 +280,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           final item = contentList[index];
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () async {
-              final result = await context.push<int>(
-                KGalleryDetailScreen.id,
-                extra: {
-                  'contentList': contentList,
-                  'initialIndex': index,
-                  'onIndexChanged': (int newIndex) {
-                    _scrollToIndex(newIndex, _getCrossAxisCount(context));
-                  },
-                },
-              );
-
-              if (result != null && mounted) {
-                _scrollToIndex(result, _getCrossAxisCount(context));
-              }
-            },
+            onTap: () => _openGallery(contentList, index),
             child: Hero(
               tag: item.url,
               child: Stack(
@@ -266,81 +323,6 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class KGalleryDetailScreen extends StatelessWidget {
-  static const id = '/k_gallery_detail';
-
-  final List<GalleryItem> contentList;
-  final int initialIndex;
-  final void Function(int index)? onIndexChanged;
-
-  const KGalleryDetailScreen({
-    super.key,
-    required this.contentList,
-    required this.initialIndex,
-    this.onIndexChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return KGallery(
-      contentList: contentList,
-      initialIndex: initialIndex,
-      onIndexChanged: onIndexChanged,
-      actionMenuBuilder: (context, currentIndex, items) {
-        if (items.isEmpty) return const SizedBox.shrink();
-        final currentItem = items[currentIndex];
-        return PopupMenuButton<String>(
-          color: Colors.black,
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (value) {
-            switch (value) {
-              case 'download':
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Downloading: ${currentItem.title ?? "Image"}',
-                    ),
-                  ),
-                );
-                break;
-              case 'slideshow':
-                break;
-            }
-          },
-          itemBuilder: (BuildContext context) => [
-            const PopupMenuItem(
-              value: 'slideshow',
-              child: Row(
-                children: [
-                  Icon(Icons.slideshow, size: 20, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Slideshow', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'download',
-              child: Row(
-                children: [
-                  Icon(Icons.download, size: 20, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Download Image', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-      progressWidget: Container(
-        color: Colors.black,
-        child: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
       ),
     );
   }

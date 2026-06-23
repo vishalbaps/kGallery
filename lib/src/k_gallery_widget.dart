@@ -125,6 +125,78 @@ class KGallery extends StatefulWidget {
     MediaKit.ensureInitialized();
   }
 
+  /// Opens the gallery on a **non-opaque** route so the screen behind it stays
+  /// painted and becomes visible as the background fades during
+  /// swipe-to-dismiss.
+  ///
+  /// This is the recommended way to present [KGallery]: a regular opaque route
+  /// (e.g. [MaterialPageRoute]) stops Flutter from painting the screen below,
+  /// so the swipe-down fade would reveal only black. Mirrors the
+  /// [showDialog]/[showModalBottomSheet] convention.
+  ///
+  /// Returns a [Future] that completes with the last-displayed index when the
+  /// gallery is dismissed (via swipe-down or the close button), or `null` if it
+  /// is popped without a result (e.g. raw system back).
+  ///
+  /// ```dart
+  /// final lastIndex = await KGallery.show(
+  ///   context,
+  ///   contentList: items,
+  ///   initialIndex: tappedIndex,
+  /// );
+  /// ```
+  static Future<int?> show(
+    BuildContext context, {
+    required List<GalleryItem> contentList,
+    required int initialIndex,
+    Widget? progressWidget,
+    Widget? thumbProgressWidget,
+    bool enableZoom = true,
+    bool enableSwipeToDismiss = true,
+    bool enableHapticFeedback = true,
+    Widget? leading,
+    String? title,
+    String? noInternetMessage,
+    void Function(int index)? onIndexChanged,
+    void Function(int currentIndex)? onClose,
+    GalleryTheme? theme,
+    Widget Function(
+      BuildContext,
+      int currentIndex,
+      List<GalleryItem> items,
+    )? actionMenuBuilder,
+    Duration transitionDuration = const Duration(milliseconds: 250),
+  }) {
+    return Navigator.of(context).push<int>(
+      PageRouteBuilder<int>(
+        opaque: false, // keep the screen behind painted (see-through dismiss)
+        barrierColor: Colors.transparent, // no scrim over the screen behind
+        transitionDuration: transitionDuration,
+        reverseTransitionDuration: transitionDuration,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            FadeTransition(
+          opacity: animation,
+          child: KGallery(
+            contentList: contentList,
+            initialIndex: initialIndex,
+            progressWidget: progressWidget,
+            thumbProgressWidget: thumbProgressWidget,
+            enableZoom: enableZoom,
+            enableSwipeToDismiss: enableSwipeToDismiss,
+            enableHapticFeedback: enableHapticFeedback,
+            leading: leading,
+            title: title,
+            noInternetMessage: noInternetMessage,
+            onIndexChanged: onIndexChanged,
+            onClose: onClose,
+            theme: theme,
+            actionMenuBuilder: actionMenuBuilder,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   State<KGallery> createState() => _KGalleryState();
 }
