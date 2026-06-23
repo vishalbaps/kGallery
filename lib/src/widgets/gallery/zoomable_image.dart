@@ -5,6 +5,11 @@ import 'package:flutter/material.dart';
 /// Built on Flutter's [InteractiveViewer]. Exposes the current scale via
 /// [scaleNotifier] so parent widgets can react (e.g. disable a parent
 /// [PageView] while zoomed, or hide overlay UI on pinch-in).
+///
+/// When NOT zoomed ([scaleNotifier] ≤ 1.0), [InteractiveViewer] has
+/// `panEnabled: false` so single-finger drags fall through to the parent
+/// [DismissibleDragArea] (vertical dismiss) and [PageView] (horizontal
+/// navigation) untouched.
 class ZoomableImage extends StatefulWidget {
   final Widget child;
   final ValueNotifier<double> scaleNotifier;
@@ -31,8 +36,7 @@ class ZoomableImage extends StatefulWidget {
   State<ZoomableImage> createState() => _ZoomableImageState();
 }
 
-class _ZoomableImageState extends State<ZoomableImage>
-    with SingleTickerProviderStateMixin {
+class _ZoomableImageState extends State<ZoomableImage> with SingleTickerProviderStateMixin {
   late final TransformationController _controller;
   late final AnimationController _animController;
   Animation<Matrix4>? _animation;
@@ -70,11 +74,7 @@ class _ZoomableImageState extends State<ZoomableImage>
     final isZoomed = scale > 1.01;
     if (isZoomed != _wasZoomed) {
       _wasZoomed = isZoomed;
-      if (isZoomed) {
-        widget.onZoomIn?.call();
-      } else {
-        widget.onZoomOut?.call();
-      }
+      isZoomed ? widget.onZoomIn?.call() : widget.onZoomOut?.call();
     }
   }
 
@@ -109,9 +109,7 @@ class _ZoomableImageState extends State<ZoomableImage>
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onDoubleTapDown: (details) {
-        _doubleTapPosition = details.localPosition;
-      },
+      onDoubleTapDown: (details) => _doubleTapPosition = details.localPosition,
       onDoubleTap: _handleDoubleTap,
       child: AnimatedBuilder(
         animation: _controller,

@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart';
@@ -17,12 +18,14 @@ import 'media/gallery_youtube_item.dart';
 /// Thin orchestrator that hosts the swipable gallery page view.
 ///
 /// Owns:
-///   - The current item's zoom scale (so it can disable page swipe + drag dismiss).
+///   - The current item's zoom scale (so it can disable page swipe + drag
+///     dismiss).
 ///   - The background fade opacity during drag-to-dismiss.
-///
-/// Delegates rendering to type-specific widgets (image / video / audio /
-/// youtube) and reusable building blocks ([GalleryImageItem],
-/// [DismissibleDragArea], [ZoomAwarePageView]).
+///   - A top-level [Listener] that detects gestures while the image is zoomed
+///     in and [InteractiveViewer] has claimed the pan. Flutter routes all
+///     MOVE/UP events for a pointer to the same widgets that received the DOWN
+///     event, so this [Listener] reliably tracks the full gesture trajectory
+///     regardless of which descendant won the gesture arena.
 class GalleryImageViewer extends StatefulWidget {
   final PageController pageController;
   final Widget? progressWidget;
@@ -51,9 +54,7 @@ class GalleryImageViewer extends StatefulWidget {
   State<GalleryImageViewer> createState() => _GalleryImageViewerState();
 }
 
-class _GalleryImageViewerState extends State<GalleryImageViewer> {
-  /// Delay before media (video/audio/youtube) widgets actually initialize.
-  /// Skipped entirely if the user scrolls past the page before it elapses.
+class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTickerProviderStateMixin {
   static const Duration _mediaInitDelay = Duration(milliseconds: 150);
 
   /// Scale of the currently visible item (1.0 = not zoomed).
@@ -62,9 +63,225 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
   /// Background opacity for drag-to-dismiss visual feedback (1.0 = solid black).
   final ValueNotifier<double> _bgOpacity = ValueNotifier<double>(1.0);
 
-  void _resetScale() {
-    _currentScale.value = 1.0;
+  /// Translation offset applied to the page content during a zoomed dismiss drag
+  /// or fly-away animation.
+  final ValueNotifier<Offset> _zoomedDismissOffset = ValueNotifier<Offset>(Offset.zero);
+
+  /// Drives fly-away and snap-back animations when dismissing while zoomed.
+  late final AnimationController _zoomedDismissController;
+
+  /// Held so the animation listener can be removed before a new one is added.
+  VoidCallback? _zoomedDismissListener;
+
+  /// Whether we are currently in a live "drag down to dismiss" gesture while
+  /// the image is zoomed.
+  bool _zoomedDragActive = false;
+
+  /// Accumulated pointer delta since the last DOWN, used to detect dismiss intent.
+  Offset _zoomedDragAccumulated = Offset.zero;
+
+  /// Screen height cached each build for use in animation calculations.
+  double _screenHeight = 800.0;
+
+  // ── Raw pointer tracking ─────────────────────────────────────────────────
+  int _activePointers = 0;
+  VelocityTracker? _velocityTracker;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomedDismissController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
   }
+
+  @override
+  void dispose() {
+    _stopZoomedDismissAnim();
+    _zoomedDismissController.dispose();
+    _zoomedDismissOffset.dispose();
+    _currentScale.dispose();
+    _bgOpacity.dispose();
+    super.dispose();
+  }
+
+  // ── Pointer event handlers ───────────────────────────────────────────────
+
+  void _onPointerDown(PointerDownEvent event) {
+    _activePointers++;
+    _zoomedDragAccumulated = Offset.zero;
+    if (_activePointers == 1) {
+      _velocityTracker = VelocityTracker.withKind(event.kind);
+      _velocityTracker!.addPosition(event.timeStamp, event.localPosition);
+    } else {
+      // Second finger arrived → cancel any ongoing dismiss drag.
+      _velocityTracker = null;
+      if (_zoomedDragActive) {
+        _zoomedDragActive = false;
+        _snapBackZoomedDrag();
+      }
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    if (_activePointers != 1) return;
+    _velocityTracker?.addPosition(event.timeStamp, event.localPosition);
+
+    if (_currentScale.value <= 1.01) return;
+
+    _zoomedDragAccumulated += event.delta;
+
+    // Enter dismiss-drag mode when the gesture is predominantly downward.
+    if (!_zoomedDragActive) {
+      final absY = _zoomedDragAccumulated.dy.abs();
+      final absX = _zoomedDragAccumulated.dx.abs();
+      if (_zoomedDragAccumulated.dy > 12 && absY > absX * 1.5) {
+        _zoomedDragActive = true;
+        _stopZoomedDismissAnim(); // abort any snap-back in progress
+      }
+    }
+
+    if (_zoomedDragActive) {
+      final newDy = (_zoomedDismissOffset.value.dy + event.delta.dy).clamp(0.0, double.infinity);
+      _zoomedDismissOffset.value = Offset(0, newDy);
+      _bgOpacity.value = (1.0 - (newDy / 400.0).clamp(0.0, 1.0));
+    }
+  }
+
+  void _onZoomedPointerUp(BuildContext context, PointerUpEvent event) {
+    final isLast = _activePointers == 1;
+    _activePointers = (_activePointers - 1).clamp(0, 20);
+
+    final wasDragging = _zoomedDragActive;
+    _zoomedDragActive = false;
+    _zoomedDragAccumulated = Offset.zero;
+
+    if (!isLast || _currentScale.value <= 1.01 || !widget.enableSwipeToDismiss) {
+      if (_activePointers == 0) _velocityTracker = null;
+      return;
+    }
+
+    final tracker = _velocityTracker;
+    _velocityTracker = null;
+
+    double velocityDy = 0;
+    double velocityDx = 0;
+    if (tracker != null) {
+      final estimate = tracker.getVelocityEstimate();
+      if (estimate != null) {
+        velocityDy = estimate.pixelsPerSecond.dy;
+        velocityDx = estimate.pixelsPerSecond.dx;
+      }
+    }
+
+    if (wasDragging) {
+      // Real-time drag was active — decide based on distance + velocity.
+      final dy = _zoomedDismissOffset.value.dy;
+      if (dy > 150 || velocityDy > 700) {
+        _triggerZoomedFlyAway(context);
+      } else {
+        _snapBackZoomedDrag();
+      }
+      return;
+    }
+
+    // No real-time drag entered dismiss mode — check pure flick velocity.
+    final absX = velocityDx.abs();
+    final absY = velocityDy.abs();
+
+    if (velocityDy > 400 && absY > absX * 0.7) {
+      _triggerZoomedFlyAway(context);
+      return;
+    }
+
+    if (absX > 400 && absX > absY * 1.5) {
+      _navigateWhileZoomed(context, next: velocityDx < 0);
+    }
+  }
+
+  // ── Zoomed dismiss animation helpers ────────────────────────────────────
+
+  void _stopZoomedDismissAnim() {
+    if (_zoomedDismissListener != null) {
+      _zoomedDismissController.removeListener(_zoomedDismissListener!);
+      _zoomedDismissListener = null;
+    }
+    _zoomedDismissController.stop();
+  }
+
+  /// Animates the page content off the bottom of the screen — matches the
+  /// unzoomed [DismissibleDragArea] fly-away — then pops the route.
+  void _triggerZoomedFlyAway(BuildContext context) {
+    _stopZoomedDismissAnim();
+
+    final startOffset = _zoomedDismissOffset.value;
+    final endDy = _screenHeight + 200.0;
+
+    final anim = Tween<Offset>(
+      begin: startOffset,
+      end: Offset(0, endDy),
+    ).animate(CurvedAnimation(parent: _zoomedDismissController, curve: Curves.easeOut));
+
+    _zoomedDismissListener = () {
+      _zoomedDismissOffset.value = anim.value;
+      final progress = (anim.value.dy / endDy).clamp(0.0, 1.0);
+      _bgOpacity.value = (1.0 - progress).clamp(0.0, 1.0);
+    };
+
+    _zoomedDismissController
+      ..addListener(_zoomedDismissListener!)
+      ..duration = const Duration(milliseconds: 280)
+      ..reset()
+      ..forward().whenComplete(() {
+        _stopZoomedDismissAnim();
+        _handleDismiss(context);
+      });
+  }
+
+  /// Snaps the page content back to its resting position (cancelled drag).
+  void _snapBackZoomedDrag() {
+    _stopZoomedDismissAnim();
+
+    final startOffset = _zoomedDismissOffset.value;
+    if (startOffset == Offset.zero) return;
+
+    final anim = Tween<Offset>(begin: startOffset, end: Offset.zero)
+        .animate(CurvedAnimation(parent: _zoomedDismissController, curve: Curves.easeOut));
+
+    _zoomedDismissListener = () {
+      _zoomedDismissOffset.value = anim.value;
+      _bgOpacity.value = (1.0 - (anim.value.dy / 400.0).clamp(0.0, 1.0));
+    };
+
+    _zoomedDismissController
+      ..addListener(_zoomedDismissListener!)
+      ..duration = const Duration(milliseconds: 200)
+      ..reset()
+      ..forward().whenComplete(() {
+        _stopZoomedDismissAnim();
+        _zoomedDismissOffset.value = Offset.zero;
+        _bgOpacity.value = 1.0;
+      });
+  }
+
+  void _navigateWhileZoomed(BuildContext context, {required bool next}) {
+    final bloc = context.read<GalleryBloc>();
+    final current = bloc.state.currentIndex;
+    final count = bloc.state.items.length;
+    final target = next ? current + 1 : current - 1;
+    if (target >= 0 && target < count) {
+      widget.pageController.animateToPage(
+        target,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  // ── Gallery helpers ───────────────────────────────────────────────────────
+
+  void _resetScale() => _currentScale.value = 1.0;
 
   void _handleDismiss(BuildContext context) {
     final currentIndex = context.read<GalleryBloc>().state.currentIndex;
@@ -85,16 +302,13 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
   }
 
   void _handleDragEnded(BuildContext context) {
-    _bgOpacity.value = 1.0;
     final bloc = context.read<GalleryBloc>();
     if (bloc.state.isSliding) {
       bloc.add(GallerySetSliding(false));
     }
   }
 
-  void _toggleUI(BuildContext context) {
-    context.read<GalleryBloc>().add(GalleryToggleUI());
-  }
+  void _toggleUI(BuildContext context) => context.read<GalleryBloc>().add(GalleryToggleUI());
 
   void _setUIVisible(BuildContext context, bool visible) {
     final bloc = context.read<GalleryBloc>();
@@ -103,48 +317,72 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
     }
   }
 
-  @override
-  void dispose() {
-    _currentScale.dispose();
-    _bgOpacity.dispose();
-    super.dispose();
-  }
+  // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Background that fades with drag-to-dismiss progress.
-        ValueListenableBuilder<double>(
-          valueListenable: _bgOpacity,
-          builder: (context, opacity, _) {
-            return ColoredBox(
-              color: (widget.theme?.backgroundColor ?? Colors.black)
-                  .withValues(alpha: opacity),
-            );
-          },
-        ),
-        BlocBuilder<GalleryBloc, GalleryState>(
-          buildWhen: (prev, curr) =>
-              !identical(prev.items, curr.items) ||
-              prev.items.length != curr.items.length,
-          builder: (context, state) {
-            return ZoomAwarePageView(
-              controller: widget.pageController,
-              itemCount: state.items.length,
-              currentItemScale: _currentScale,
-              onPageChanged: (index) {
-                _resetScale();
-                context.read<GalleryBloc>().add(GalleryIndexChanged(index));
-              },
-              itemBuilder: (context, index) {
-                return _buildPage(context, state.items[index], index);
-              },
-            );
-          },
-        ),
-      ],
+    _screenHeight = MediaQuery.of(context).size.height;
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: _onPointerDown,
+      onPointerMove: _onPointerMove,
+      onPointerUp: (event) => _onZoomedPointerUp(context, event),
+      onPointerCancel: (_) {
+        _activePointers = (_activePointers - 1).clamp(0, 20);
+        if (_zoomedDragActive) {
+          _zoomedDragActive = false;
+          _zoomedDragAccumulated = Offset.zero;
+          _snapBackZoomedDrag();
+        }
+        if (_activePointers == 0) _velocityTracker = null;
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background that fades with drag-to-dismiss progress.
+          ValueListenableBuilder<double>(
+            valueListenable: _bgOpacity,
+            builder: (context, opacity, _) {
+              return ColoredBox(
+                color: (widget.theme?.backgroundColor ?? Colors.black).withValues(alpha: opacity),
+              );
+            },
+          ),
+          BlocBuilder<GalleryBloc, GalleryState>(
+            buildWhen: (prev, curr) => !identical(prev.items, curr.items) || prev.items.length != curr.items.length,
+            builder: (context, state) {
+              // Apply translate + subtle scale during zoomed dismiss drag / fly-away.
+              return ValueListenableBuilder<Offset>(
+                valueListenable: _zoomedDismissOffset,
+                builder: (context, dismissOffset, child) {
+                  final progress = (dismissOffset.dy / 400.0).clamp(0.0, 1.0);
+                  final scale = 1.0 - progress * 0.12;
+                  return Transform.scale(
+                    scale: scale,
+                    child: Transform.translate(
+                      offset: dismissOffset,
+                      child: child,
+                    ),
+                  );
+                },
+                child: ZoomAwarePageView(
+                  controller: widget.pageController,
+                  itemCount: state.items.length,
+                  currentItemScale: _currentScale,
+                  onPageChanged: (index) {
+                    _resetScale();
+                    context.read<GalleryBloc>().add(GalleryIndexChanged(index));
+                  },
+                  itemBuilder: (context, index) {
+                    return _buildPage(context, state.items[index], index);
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -162,7 +400,6 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
           onZoomIn: () => _setUIVisible(context, false),
           onZoomOut: () => _setUIVisible(context, true),
         );
-        // Tap toggles UI on image pages only (media items have their own tap).
         content = GestureDetector(
           behavior: HitTestBehavior.translucent,
           onTap: () => _toggleUI(context),
@@ -210,9 +447,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> {
 
     final hero = Hero(tag: item.url, child: content);
 
-    if (!widget.enableSwipeToDismiss) {
-      return hero;
-    }
+    if (!widget.enableSwipeToDismiss) return hero;
 
     return DismissibleDragArea(
       enabled: true,
