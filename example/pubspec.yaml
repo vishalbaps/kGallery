@@ -49,6 +49,17 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+dependency_overrides:
+  # flutter_cache_manager 3.4.1 on pub.dev leaks cache files on disk: stale/
+  # over-capacity cleanup prunes DB rows but never deletes the files
+  # (CacheStore._removeCachedFile used io.File(relativePath) vs the cache dir).
+  # Already fixed in the repo (commit b2effad) but unreleased — pin to that fix.
+  flutter_cache_manager:
+    git:
+      url: https://github.com/vishalbaps/flutter_cache_manager.git
+      ref: 54904e499a06d0364a2b3f4ca9789e5f829f1879
+      path: flutter_cache_manager
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

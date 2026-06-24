@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
@@ -18,6 +19,12 @@ class GalleryAudioItem extends StatefulWidget {
   final GalleryBloc galleryBloc;
   final String? noInternetMessage;
 
+  /// Cache manager forwarded to the artwork's [CachedNetworkImage].
+  final BaseCacheManager? cacheManager;
+
+  /// In-memory decode width cap forwarded to the artwork's [CachedNetworkImage].
+  final int? memCacheWidth;
+
   const GalleryAudioItem({
     super.key,
     required this.item,
@@ -25,6 +32,8 @@ class GalleryAudioItem extends StatefulWidget {
     required this.activePlayerNotifier,
     required this.galleryBloc,
     this.noInternetMessage,
+    this.cacheManager,
+    this.memCacheWidth,
   });
 
   @override
@@ -209,6 +218,8 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
           ? galleryImage(
               source: thumb,
               fit: BoxFit.contain,
+              cacheManager: widget.cacheManager,
+              memCacheWidth: widget.memCacheWidth,
               errorWidget: (context, _, __) => const Icon(
                 Icons.audiotrack,
                 size: 100,

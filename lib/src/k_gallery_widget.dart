@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -84,6 +85,23 @@ class KGallery extends StatefulWidget {
     List<GalleryItem> items,
   )? actionMenuBuilder;
 
+  /// Cache manager used for network images (full-screen viewer, thumbnail
+  /// strip, and audio artwork).
+  ///
+  /// Lets the host app share its own [BaseCacheManager] — e.g. a
+  /// [CacheManager] with a custom [Config] (cache key, `stalePeriod`,
+  /// `maxNrOfCacheObjects`) or authenticated headers. Defaults to
+  /// `cached_network_image`'s shared `DefaultCacheManager` when `null`.
+  final BaseCacheManager? cacheManager;
+
+  /// Caps the width (in pixels) of the bitmap kept in memory for full-screen
+  /// network images, forwarded to `CachedNetworkImage.memCacheWidth`.
+  ///
+  /// Useful for very large images: decode them down to roughly the display
+  /// resolution to reduce memory pressure. Does not affect thumbnails, which
+  /// always use a small fixed decode size.
+  final int? memCacheWidth;
+
   /// Creates a [KGallery] widget.
   ///
   /// [contentList] must not be empty.
@@ -104,6 +122,8 @@ class KGallery extends StatefulWidget {
     this.onClose,
     this.theme,
     this.actionMenuBuilder,
+    this.cacheManager,
+    this.memCacheWidth,
   })  : assert(contentList.length > 0, 'contentList must not be empty'),
         assert(
           initialIndex >= 0 && initialIndex < contentList.length,
@@ -165,6 +185,8 @@ class KGallery extends StatefulWidget {
       int currentIndex,
       List<GalleryItem> items,
     )? actionMenuBuilder,
+    BaseCacheManager? cacheManager,
+    int? memCacheWidth,
     Duration transitionDuration = const Duration(milliseconds: 250),
   }) {
     return Navigator.of(context).push<int>(
@@ -191,6 +213,8 @@ class KGallery extends StatefulWidget {
             onClose: onClose,
             theme: theme,
             actionMenuBuilder: actionMenuBuilder,
+            cacheManager: cacheManager,
+            memCacheWidth: memCacheWidth,
           ),
         ),
       ),
@@ -292,6 +316,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         onClose: widget.onClose,
                         noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
                         theme: _effectiveTheme,
+                        cacheManager: widget.cacheManager,
+                        memCacheWidth: widget.memCacheWidth,
                       ),
 
                       _GalleryTopBar(
@@ -325,6 +351,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         activePlayerNotifier: activePlayerNotifier,
                         activeYoutubeNotifier: activeYoutubeNotifier,
                         theme: _effectiveTheme,
+                        cacheManager: widget.cacheManager,
                       ),
                     ],
                   ),

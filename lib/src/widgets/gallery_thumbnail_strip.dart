@@ -28,6 +28,9 @@ class GalleryThumbnailStrip extends StatefulWidget {
   /// Theme used to style the seekbar colors.
   final GalleryTheme theme;
 
+  /// Cache manager forwarded to each thumbnail's [CachedNetworkImage].
+  final BaseCacheManager? cacheManager;
+
   const GalleryThumbnailStrip({
     super.key,
     required this.enableHapticFeedback,
@@ -36,6 +39,7 @@ class GalleryThumbnailStrip extends StatefulWidget {
     required this.activeYoutubeNotifier,
     required this.theme,
     this.thumbProgressWidget,
+    this.cacheManager,
   });
 
   @override
@@ -457,9 +461,14 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
     return galleryImage(
       source: effectiveImageUrl,
       fit: BoxFit.cover,
-      // Cap the decoded bitmap for base64 thumbnails so a large data URI
-      // isn't decoded at full resolution just to fill the strip.
+      // Cap the decoded bitmap so a large image isn't decoded at full
+      // resolution just to fill the strip — cacheWidth covers the base64
+      // path, memCacheWidth the network path. The thumbnail size is fixed
+      // and small, so this stays independent of the caller's full-screen
+      // memCacheWidth.
       cacheWidth: 320,
+      memCacheWidth: 320,
+      cacheManager: widget.cacheManager,
       placeholder: (context, _) =>
           widget.thumbProgressWidget ?? const SizedBox.shrink(),
       errorWidget: (context, _, __) => Container(

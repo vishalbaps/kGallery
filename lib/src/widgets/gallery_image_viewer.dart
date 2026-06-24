@@ -1,6 +1,7 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
@@ -37,6 +38,13 @@ class GalleryImageViewer extends StatefulWidget {
   final String? noInternetMessage;
   final GalleryTheme? theme;
 
+  /// Cache manager forwarded to network image sources (full-screen images and
+  /// audio artwork).
+  final BaseCacheManager? cacheManager;
+
+  /// In-memory decode width cap forwarded to full-screen network images.
+  final int? memCacheWidth;
+
   const GalleryImageViewer({
     super.key,
     required this.pageController,
@@ -48,6 +56,8 @@ class GalleryImageViewer extends StatefulWidget {
     this.onClose,
     this.noInternetMessage,
     this.theme,
+    this.cacheManager,
+    this.memCacheWidth,
   });
 
   @override
@@ -325,6 +335,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
           progressWidget: widget.progressWidget,
           onZoomIn: () => _setUIVisible(context, false),
           onZoomOut: () => _setUIVisible(context, true),
+          cacheManager: widget.cacheManager,
+          memCacheWidth: widget.memCacheWidth,
         );
         content = GestureDetector(
           behavior: HitTestBehavior.translucent,
@@ -354,6 +366,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
             activePlayerNotifier: widget.activePlayerNotifier,
             galleryBloc: bloc,
             noInternetMessage: widget.noInternetMessage,
+            cacheManager: widget.cacheManager,
+            memCacheWidth: widget.memCacheWidth,
           ),
         );
       case GalleryItemType.youtube:

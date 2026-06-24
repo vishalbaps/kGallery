@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// Image-source helpers that let kGallery transparently render either a
 /// network URL or an inline base64 data URI (e.g.
@@ -71,12 +72,19 @@ Uint8List? decodeBase64DataUri(String source) {
 /// - **base64**: decodes once and renders [Image.memory] — no loading
 ///   [placeholder] (the bytes are already local) and no disk caching. On a
 ///   decode failure (or a later codec error) the [errorWidget] is shown.
-/// - **network**: renders [CachedNetworkImage] exactly as before, preserving
-///   the disk-backed cache, [placeholder], and [errorWidget] behavior.
+/// - **network**: renders [CachedNetworkImage], forwarding the caller-supplied
+///   [cacheManager] and [memCacheWidth] while preserving the disk-backed cache,
+///   [placeholder], and [errorWidget] behavior.
 ///
 /// [cacheWidth] / [cacheHeight] apply only to the base64 path, where they cap
 /// the decoded bitmap size (useful for thumbnails to avoid decoding a large
 /// image at full resolution).
+///
+/// [cacheManager] / [memCacheWidth] apply only to the network path:
+/// [cacheManager] lets the host app share its own [BaseCacheManager] (custom
+/// disk cache config, auth headers, etc.) and [memCacheWidth] caps the width of
+/// the bitmap held in memory by [CachedNetworkImage] (the network analogue of
+/// [cacheWidth]).
 Widget galleryImage({
   required String source,
   BoxFit? fit,
@@ -84,6 +92,8 @@ Widget galleryImage({
   double? height,
   int? cacheWidth,
   int? cacheHeight,
+  BaseCacheManager? cacheManager,
+  int? memCacheWidth,
   PlaceholderWidgetBuilder? placeholder,
   required LoadingErrorWidgetBuilder errorWidget,
 }) {
@@ -112,6 +122,8 @@ Widget galleryImage({
     fit: fit,
     width: width,
     height: height,
+    cacheManager: cacheManager,
+    memCacheWidth: memCacheWidth,
     placeholder: placeholder,
     errorWidget: errorWidget,
   );

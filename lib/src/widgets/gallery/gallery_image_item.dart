@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../../models/gallery_item.dart';
 import '../../utils/image_source.dart';
@@ -18,6 +19,13 @@ class GalleryImageItem extends StatelessWidget {
   final VoidCallback? onZoomIn;
   final VoidCallback? onZoomOut;
 
+  /// Optional cache manager forwarded to [CachedNetworkImage] for network
+  /// image sources.
+  final BaseCacheManager? cacheManager;
+
+  /// Optional in-memory decode width cap forwarded to [CachedNetworkImage].
+  final int? memCacheWidth;
+
   const GalleryImageItem({
     super.key,
     required this.item,
@@ -26,6 +34,8 @@ class GalleryImageItem extends StatelessWidget {
     this.progressWidget,
     this.onZoomIn,
     this.onZoomOut,
+    this.cacheManager,
+    this.memCacheWidth,
   });
 
   @override
@@ -35,6 +45,8 @@ class GalleryImageItem extends StatelessWidget {
       fit: BoxFit.contain,
       width: double.infinity,
       height: double.infinity,
+      cacheManager: cacheManager,
+      memCacheWidth: memCacheWidth,
       placeholder: (context, _) =>
           progressWidget ??
           const Center(child: CircularProgressIndicator(color: Colors.white)),

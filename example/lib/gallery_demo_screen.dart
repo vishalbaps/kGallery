@@ -23,6 +23,20 @@ class DemoGalleryScreen extends StatefulWidget {
 class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
   final ScrollController _scrollController = ScrollController();
 
+  /// A custom cache manager shared between this grid and the gallery. Passing
+  /// the same instance to both the grid thumbnails and [KGallery.show] means an
+  /// image fetched for the grid is reused full-screen (and vice-versa), and the
+  /// host app — not the package — owns the disk-cache policy (key, stale
+  /// period, max object count). [CacheManager], [Config], and [BaseCacheManager]
+  /// are re-exported by `package:k_gallery`.
+  final BaseCacheManager _cacheManager = CacheManager(
+    Config(
+      'kGalleryDemoCache',
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 200,
+    ),
+  );
+
   int _getCrossAxisCount(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
     if (shortestSide >= 800) return 6;
@@ -95,6 +109,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
     return CachedNetworkImage(
       imageUrl: source,
       fit: BoxFit.cover,
+      cacheManager: _cacheManager,
       placeholder: (context, url) => Container(
         color: Colors.grey[900],
         child: const Center(child: CircularProgressIndicator()),
@@ -115,6 +130,11 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
       onIndexChanged: (newIndex) =>
           _scrollToIndex(newIndex, _getCrossAxisCount(context)),
       actionMenuBuilder: _buildActionMenu,
+      // Reuse the grid's cache so images already fetched for the thumbnails
+      // load instantly full-screen.
+      cacheManager: _cacheManager,
+      // Cap the in-memory bitmap width for full-screen images to roughly the
+      // display resolution, reducing memory pressure for very large sources.
       progressWidget: Container(
         color: Colors.black,
         child: const Center(
