@@ -162,19 +162,41 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
   @override
   Widget build(BuildContext context) {
     _screenHeight = MediaQuery.of(context).size.height;
+
+    final content = Transform.scale(
+      scale: _dragScale,
+      child: Transform.translate(
+        offset: _offset,
+        child: widget.child,
+      ),
+    );
+
+    final scaleListenable = widget.scaleNotifier;
+    if (scaleListenable == null) {
+      return _buildDetector(dragEnabled: widget.enabled, child: content);
+    }
+
+    // While the image is zoomed, do NOT attach the vertical-drag recognizer.
+    // If we did, it would win the gesture arena over InteractiveViewer's pan
+    // and block the user from panning the zoomed image vertically.
+    return ValueListenableBuilder<double>(
+      valueListenable: scaleListenable,
+      builder: (context, scale, child) {
+        final dragEnabled = widget.enabled && scale <= 1.01;
+        return _buildDetector(dragEnabled: dragEnabled, child: child!);
+      },
+      child: content,
+    );
+  }
+
+  Widget _buildDetector({required bool dragEnabled, required Widget child}) {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
-      onVerticalDragStart: _handleStart,
-      onVerticalDragUpdate: _handleUpdate,
-      onVerticalDragEnd: _handleEnd,
-      onVerticalDragCancel: _handleCancel,
-      child: Transform.scale(
-        scale: _dragScale,
-        child: Transform.translate(
-          offset: _offset,
-          child: widget.child,
-        ),
-      ),
+      onVerticalDragStart: dragEnabled ? _handleStart : null,
+      onVerticalDragUpdate: dragEnabled ? _handleUpdate : null,
+      onVerticalDragEnd: dragEnabled ? _handleEnd : null,
+      onVerticalDragCancel: dragEnabled ? _handleCancel : null,
+      child: child,
     );
   }
 }

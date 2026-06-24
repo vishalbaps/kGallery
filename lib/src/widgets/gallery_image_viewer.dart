@@ -73,13 +73,6 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
   /// Held so the animation listener can be removed before a new one is added.
   VoidCallback? _zoomedDismissListener;
 
-  /// Whether we are currently in a live "drag down to dismiss" gesture while
-  /// the image is zoomed.
-  bool _zoomedDragActive = false;
-
-  /// Accumulated pointer delta since the last DOWN, used to detect dismiss intent.
-  Offset _zoomedDragAccumulated = Offset.zero;
-
   /// Screen height cached each build for use in animation calculations.
   double _screenHeight = 800.0;
 
@@ -110,52 +103,29 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
 
   void _onPointerDown(PointerDownEvent event) {
     _activePointers++;
-    _zoomedDragAccumulated = Offset.zero;
     if (_activePointers == 1) {
       _velocityTracker = VelocityTracker.withKind(event.kind);
       _velocityTracker!.addPosition(event.timeStamp, event.localPosition);
     } else {
-      // Second finger arrived → cancel any ongoing dismiss drag.
+      // Second finger (pinch) arrived → discard the single-finger tracker so a
+      // pinch never registers as a flick.
       _velocityTracker = null;
-      if (_zoomedDragActive) {
-        _zoomedDragActive = false;
-        _snapBackZoomedDrag();
-      }
     }
   }
 
   void _onPointerMove(PointerMoveEvent event) {
-    if (_activePointers != 1) return;
-    _velocityTracker?.addPosition(event.timeStamp, event.localPosition);
-
-    if (_currentScale.value <= 1.01) return;
-
-    _zoomedDragAccumulated += event.delta;
-
-    // Enter dismiss-drag mode when the gesture is predominantly downward.
-    if (!_zoomedDragActive) {
-      final absY = _zoomedDragAccumulated.dy.abs();
-      final absX = _zoomedDragAccumulated.dx.abs();
-      if (_zoomedDragAccumulated.dy > 12 && absY > absX * 1.5) {
-        _zoomedDragActive = true;
-        _stopZoomedDismissAnim(); // abort any snap-back in progress
-      }
-    }
-
-    if (_zoomedDragActive) {
-      final newDy = (_zoomedDismissOffset.value.dy + event.delta.dy).clamp(0.0, double.infinity);
-      _zoomedDismissOffset.value = Offset(0, newDy);
-      _bgOpacity.value = (1.0 - (newDy / 400.0).clamp(0.0, 1.0));
+    // Only track velocity for a single-finger gesture. We intentionally do NOT
+    // translate anything here: while zoomed, InteractiveViewer fully owns the
+    // pan so it stays buttery smooth. Dismiss/navigate is decided purely from
+    // the release velocity in _onZoomedPointerUp.
+    if (_activePointers == 1) {
+      _velocityTracker?.addPosition(event.timeStamp, event.localPosition);
     }
   }
 
   void _onZoomedPointerUp(BuildContext context, PointerUpEvent event) {
     final isLast = _activePointers == 1;
     _activePointers = (_activePointers - 1).clamp(0, 20);
-
-    final wasDragging = _zoomedDragActive;
-    _zoomedDragActive = false;
-    _zoomedDragAccumulated = Offset.zero;
 
     if (!isLast || _currentScale.value <= 1.01 || !widget.enableSwipeToDismiss) {
       if (_activePointers == 0) _velocityTracker = null;
@@ -164,39 +134,26 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
 
     final tracker = _velocityTracker;
     _velocityTracker = null;
+    if (tracker == null) return;
 
-    double velocityDy = 0;
-    double velocityDx = 0;
-    if (tracker != null) {
-      final estimate = tracker.getVelocityEstimate();
-      if (estimate != null) {
-        velocityDy = estimate.pixelsPerSecond.dy;
-        velocityDx = estimate.pixelsPerSecond.dx;
-      }
-    }
+    final estimate = tracker.getVelocityEstimate();
+    if (estimate == null) return;
 
-    if (wasDragging) {
-      // Real-time drag was active — decide based on distance + velocity.
-      final dy = _zoomedDismissOffset.value.dy;
-      if (dy > 150 || velocityDy > 700) {
-        _triggerZoomedFlyAway(context);
-      } else {
-        _snapBackZoomedDrag();
-      }
-      return;
-    }
+    final v = estimate.pixelsPerSecond;
+    final absX = v.dx.abs();
+    final absY = v.dy.abs();
 
-    // No real-time drag entered dismiss mode — check pure flick velocity.
-    final absX = velocityDx.abs();
-    final absY = velocityDy.abs();
-
-    if (velocityDy > 400 && absY > absX * 0.7) {
+    // Deliberate fast downward flick → dismiss (animated fly-away). The high
+    // threshold keeps ordinary panning (which releases more slowly) from
+    // dismissing by accident.
+    if (v.dy > 700 && absY > absX * 1.5) {
       _triggerZoomedFlyAway(context);
       return;
     }
 
-    if (absX > 400 && absX > absY * 1.5) {
-      _navigateWhileZoomed(context, next: velocityDx < 0);
+    // Deliberate fast horizontal flick → navigate prev/next.
+    if (absX > 700 && absX > absY * 1.5) {
+      _navigateWhileZoomed(context, next: v.dx < 0);
     }
   }
 
@@ -236,32 +193,6 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
       ..forward().whenComplete(() {
         _stopZoomedDismissAnim();
         _handleDismiss(context);
-      });
-  }
-
-  /// Snaps the page content back to its resting position (cancelled drag).
-  void _snapBackZoomedDrag() {
-    _stopZoomedDismissAnim();
-
-    final startOffset = _zoomedDismissOffset.value;
-    if (startOffset == Offset.zero) return;
-
-    final anim = Tween<Offset>(begin: startOffset, end: Offset.zero)
-        .animate(CurvedAnimation(parent: _zoomedDismissController, curve: Curves.easeOut));
-
-    _zoomedDismissListener = () {
-      _zoomedDismissOffset.value = anim.value;
-      _bgOpacity.value = (1.0 - (anim.value.dy / 400.0).clamp(0.0, 1.0));
-    };
-
-    _zoomedDismissController
-      ..addListener(_zoomedDismissListener!)
-      ..duration = const Duration(milliseconds: 200)
-      ..reset()
-      ..forward().whenComplete(() {
-        _stopZoomedDismissAnim();
-        _zoomedDismissOffset.value = Offset.zero;
-        _bgOpacity.value = 1.0;
       });
   }
 
@@ -330,11 +261,6 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
       onPointerUp: (event) => _onZoomedPointerUp(context, event),
       onPointerCancel: (_) {
         _activePointers = (_activePointers - 1).clamp(0, 20);
-        if (_zoomedDragActive) {
-          _zoomedDragActive = false;
-          _zoomedDragAccumulated = Offset.zero;
-          _snapBackZoomedDrag();
-        }
         if (_activePointers == 0) _velocityTracker = null;
       },
       child: Stack(
@@ -352,7 +278,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
           BlocBuilder<GalleryBloc, GalleryState>(
             buildWhen: (prev, curr) => !identical(prev.items, curr.items) || prev.items.length != curr.items.length,
             builder: (context, state) {
-              // Apply translate + subtle scale during zoomed dismiss drag / fly-away.
+              // Translate + subtle scale while the zoomed fly-away animation runs.
               return ValueListenableBuilder<Offset>(
                 valueListenable: _zoomedDismissOffset,
                 builder: (context, dismissOffset, child) {
