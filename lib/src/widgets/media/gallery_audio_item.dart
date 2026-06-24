@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
+import '../../utils/image_source.dart';
 import 'gallery_media_internals.dart';
 
 /// Internal widget rendering a single media_kit audio item. Reuses the
@@ -206,8 +206,8 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
     final thumb = widget.item.thumbnailUrl;
     return Center(
       child: thumb != null
-          ? CachedNetworkImage(
-              imageUrl: thumb,
+          ? galleryImage(
+              source: thumb,
               fit: BoxFit.contain,
               errorWidget: (context, _, __) => const Icon(
                 Icons.audiotrack,

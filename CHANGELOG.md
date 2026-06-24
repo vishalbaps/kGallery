@@ -1,3 +1,7 @@
+## 1.1.0
+
+- **New**: `KGallery.show(context, contentList: ..., initialIndex: ...)` — opens the gallery on a **non-opaque route** so the screen behind stays visible through the background fade during swipe-to-dismiss. Returns the last-viewed index. This is now the recommended way to present the gallery; pushing `KGallery` on a normal opaque route (e.g. `MaterialPageRoute`) makes the swipe-down fade reveal only black. Mirrors the `showDialog`/`showModalBottomSheet` convention. The `KGallery` widget constructor is unchanged.
+
 ## 1.0.3
 
 - **Change**: Migrated image rendering from `extended_image` to `cached_network_image`. Full-size images and thumbnails now share a disk-backed cache, which dramatically reduces repeat-network fetches when the same item is revisited and shrinks the dependency footprint.
