@@ -1,7 +1,14 @@
+import 'dart:convert';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:k_gallery/k_gallery.dart';
+
+/// A small (160×160) four-quadrant PNG embedded inline as a base64 data URI.
+/// Demonstrates that kGallery renders base64 images in both the full-screen
+/// viewer and the thumbnail strip — no network request is made for this item.
+const String kBase64SampleImage =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAADMElEQVR4nOzVwQnAIBQFQYXff81RUkQCOyDj1YOPnbXWPmeTRef+/3O/OyBjzh3CD95BfqICMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMO0TAAD//2Anhf4QtqobAAAAAElFTkSuQmCC';
 
 class DemoGalleryScreen extends StatefulWidget {
   static const id = 'k_gallery_demo';
@@ -15,6 +22,20 @@ class DemoGalleryScreen extends StatefulWidget {
 
 class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
   final ScrollController _scrollController = ScrollController();
+
+  /// A custom cache manager shared between this grid and the gallery. Passing
+  /// the same instance to both the grid thumbnails and [KGallery.show] means an
+  /// image fetched for the grid is reused full-screen (and vice-versa), and the
+  /// host app — not the package — owns the disk-cache policy (key, stale
+  /// period, max object count). [CacheManager], [Config], and [BaseCacheManager]
+  /// are re-exported by `package:k_gallery`.
+  final BaseCacheManager _cacheManager = CacheManager(
+    Config(
+      'kGalleryDemoCache',
+      stalePeriod: const Duration(days: 7),
+      maxNrOfCacheObjects: 200,
+    ),
+  );
 
   int _getCrossAxisCount(BuildContext context) {
     final shortestSide = MediaQuery.of(context).size.shortestSide;
@@ -50,6 +71,129 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Grid thumbnail for an image-bearing item. Branches on the source the same
+  /// way kGallery does internally: an inline base64 data URI is decoded and
+  /// drawn with [Image.memory]; anything else is fetched via
+  /// [CachedNetworkImage]. Mirrors how a host app builds its own grid.
+  Widget _buildGridThumbnail(GalleryItem item) {
+    final source = item.thumbnailUrl ?? item.url;
+
+    Widget typeIconFallback() => Container(
+      color: Colors.grey[900],
+      alignment: Alignment.center,
+      child: Icon(
+        item.type == GalleryItemType.video
+            ? Icons.videocam
+            : item.type == GalleryItemType.audio
+            ? Icons.audiotrack
+            : Icons.image_not_supported,
+        size: 32,
+        color: Colors.white54,
+      ),
+    );
+
+    if (source.contains(';base64,')) {
+      try {
+        return Image.memory(
+          base64Decode(source.split(';base64,').last),
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => typeIconFallback(),
+        );
+      } catch (_) {
+        return typeIconFallback();
+      }
+    }
+
+    return CachedNetworkImage(
+      imageUrl: source,
+      fit: BoxFit.cover,
+      cacheManager: _cacheManager,
+      placeholder: (context, url) => Container(
+        color: Colors.grey[900],
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      errorWidget: (context, url, error) => typeIconFallback(),
+    );
+  }
+
+  /// Opens the gallery via [KGallery.show], which presents it on a transparent
+  /// (non-opaque) route so this grid stays visible through the background fade
+  /// when the user swipes down to dismiss. The returned index scrolls the grid
+  /// to the last-viewed item on close.
+  Future<void> _openGallery(List<GalleryItem> contentList, int index) async {
+    final result = await KGallery.show(
+      context,
+      contentList: contentList,
+      initialIndex: index,
+      onIndexChanged: (newIndex) =>
+          _scrollToIndex(newIndex, _getCrossAxisCount(context)),
+      actionMenuBuilder: _buildActionMenu,
+      // Reuse the grid's cache so images already fetched for the thumbnails
+      // load instantly full-screen.
+      cacheManager: _cacheManager,
+      // Cap the in-memory bitmap width for full-screen images to roughly the
+      // display resolution, reducing memory pressure for very large sources.
+      progressWidget: Container(
+        color: Colors.black,
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      _scrollToIndex(result, _getCrossAxisCount(context));
+    }
+  }
+
+  Widget _buildActionMenu(
+    BuildContext context,
+    int currentIndex,
+    List<GalleryItem> items,
+  ) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final currentItem = items[currentIndex];
+    return PopupMenuButton<String>(
+      color: Colors.black,
+      icon: const Icon(Icons.more_vert, color: Colors.white),
+      onSelected: (value) {
+        switch (value) {
+          case 'download':
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Downloading: ${currentItem.title ?? "Image"}'),
+              ),
+            );
+            break;
+          case 'slideshow':
+            break;
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'slideshow',
+          child: Row(
+            children: [
+              Icon(Icons.slideshow, size: 20, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Slideshow', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'download',
+          child: Row(
+            children: [
+              Icon(Icons.download, size: 20, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Download Image', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -99,6 +243,17 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
               'Resolved via youtube_explode_dart and played by media_kit using the same controls as the rest of the gallery.',
         );
       }
+      if (index == 4) {
+        return const GalleryItem(
+          url: kBase64SampleImage,
+          type: GalleryItemType.image,
+          title: 'Base64 Image (local)',
+          description:
+              'This image is passed as an inline base64 data URI — no network '
+              'request is made. It renders in both the grid thumbnail and the '
+              'full-screen viewer.',
+        );
+      }
 
       String? title;
       String? description;
@@ -145,22 +300,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
           final item = contentList[index];
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () async {
-              final result = await context.push<int>(
-                KGalleryDetailScreen.id,
-                extra: {
-                  'contentList': contentList,
-                  'initialIndex': index,
-                  'onIndexChanged': (int newIndex) {
-                    _scrollToIndex(newIndex, _getCrossAxisCount(context));
-                  },
-                },
-              );
-
-              if (result != null && mounted) {
-                _scrollToIndex(result, _getCrossAxisCount(context));
-              }
-            },
+            onTap: () => _openGallery(contentList, index),
             child: Hero(
               tag: item.url,
               child: Stack(
@@ -179,29 +319,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
                             color: Colors.white54,
                           ),
                         )
-                      : CachedNetworkImage(
-                          imageUrl: item.thumbnailUrl ?? item.url,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: Colors.grey[900],
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
-                          errorWidget: (context, url, error) => Container(
-                            color: Colors.grey[900],
-                            alignment: Alignment.center,
-                            child: Icon(
-                              item.type == GalleryItemType.video
-                                  ? Icons.videocam
-                                  : item.type == GalleryItemType.audio
-                                  ? Icons.audiotrack
-                                  : Icons.image_not_supported,
-                              size: 32,
-                              color: Colors.white54,
-                            ),
-                          ),
-                        ),
+                      : _buildGridThumbnail(item),
                   if (item.type != GalleryItemType.image &&
                       item.thumbnailUrl != null)
                     Positioned(
@@ -225,81 +343,6 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class KGalleryDetailScreen extends StatelessWidget {
-  static const id = '/k_gallery_detail';
-
-  final List<GalleryItem> contentList;
-  final int initialIndex;
-  final void Function(int index)? onIndexChanged;
-
-  const KGalleryDetailScreen({
-    super.key,
-    required this.contentList,
-    required this.initialIndex,
-    this.onIndexChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return KGallery(
-      contentList: contentList,
-      initialIndex: initialIndex,
-      onIndexChanged: onIndexChanged,
-      actionMenuBuilder: (context, currentIndex, items) {
-        if (items.isEmpty) return const SizedBox.shrink();
-        final currentItem = items[currentIndex];
-        return PopupMenuButton<String>(
-          color: Colors.black,
-          icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (value) {
-            switch (value) {
-              case 'download':
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      'Downloading: ${currentItem.title ?? "Image"}',
-                    ),
-                  ),
-                );
-                break;
-              case 'slideshow':
-                break;
-            }
-          },
-          itemBuilder: (BuildContext context) => [
-            const PopupMenuItem(
-              value: 'slideshow',
-              child: Row(
-                children: [
-                  Icon(Icons.slideshow, size: 20, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Slideshow', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'download',
-              child: Row(
-                children: [
-                  Icon(Icons.download, size: 20, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Download Image', style: TextStyle(color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-        );
-      },
-      progressWidget: Container(
-        color: Colors.black,
-        child: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
       ),
     );
   }

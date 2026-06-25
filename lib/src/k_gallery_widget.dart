@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -84,6 +85,23 @@ class KGallery extends StatefulWidget {
     List<GalleryItem> items,
   )? actionMenuBuilder;
 
+  /// Cache manager used for network images (full-screen viewer, thumbnail
+  /// strip, and audio artwork).
+  ///
+  /// Lets the host app share its own [BaseCacheManager] — e.g. a
+  /// [CacheManager] with a custom [Config] (cache key, `stalePeriod`,
+  /// `maxNrOfCacheObjects`) or authenticated headers. Defaults to
+  /// `cached_network_image`'s shared `DefaultCacheManager` when `null`.
+  final BaseCacheManager? cacheManager;
+
+  /// Caps the width (in pixels) of the bitmap kept in memory for full-screen
+  /// network images, forwarded to `CachedNetworkImage.memCacheWidth`.
+  ///
+  /// Useful for very large images: decode them down to roughly the display
+  /// resolution to reduce memory pressure. Does not affect thumbnails, which
+  /// always use a small fixed decode size.
+  final int? memCacheWidth;
+
   /// Creates a [KGallery] widget.
   ///
   /// [contentList] must not be empty.
@@ -104,6 +122,8 @@ class KGallery extends StatefulWidget {
     this.onClose,
     this.theme,
     this.actionMenuBuilder,
+    this.cacheManager,
+    this.memCacheWidth,
   })  : assert(contentList.length > 0, 'contentList must not be empty'),
         assert(
           initialIndex >= 0 && initialIndex < contentList.length,
@@ -123,6 +143,82 @@ class KGallery extends StatefulWidget {
   /// ```
   static void ensureInitialized() {
     MediaKit.ensureInitialized();
+  }
+
+  /// Opens the gallery on a **non-opaque** route so the screen behind it stays
+  /// painted and becomes visible as the background fades during
+  /// swipe-to-dismiss.
+  ///
+  /// This is the recommended way to present [KGallery]: a regular opaque route
+  /// (e.g. [MaterialPageRoute]) stops Flutter from painting the screen below,
+  /// so the swipe-down fade would reveal only black. Mirrors the
+  /// [showDialog]/[showModalBottomSheet] convention.
+  ///
+  /// Returns a [Future] that completes with the last-displayed index when the
+  /// gallery is dismissed (via swipe-down or the close button), or `null` if it
+  /// is popped without a result (e.g. raw system back).
+  ///
+  /// ```dart
+  /// final lastIndex = await KGallery.show(
+  ///   context,
+  ///   contentList: items,
+  ///   initialIndex: tappedIndex,
+  /// );
+  /// ```
+  static Future<int?> show(
+    BuildContext context, {
+    required List<GalleryItem> contentList,
+    required int initialIndex,
+    Widget? progressWidget,
+    Widget? thumbProgressWidget,
+    bool enableZoom = true,
+    bool enableSwipeToDismiss = true,
+    bool enableHapticFeedback = true,
+    Widget? leading,
+    String? title,
+    String? noInternetMessage,
+    void Function(int index)? onIndexChanged,
+    void Function(int currentIndex)? onClose,
+    GalleryTheme? theme,
+    Widget Function(
+      BuildContext,
+      int currentIndex,
+      List<GalleryItem> items,
+    )? actionMenuBuilder,
+    BaseCacheManager? cacheManager,
+    int? memCacheWidth,
+    Duration transitionDuration = const Duration(milliseconds: 250),
+  }) {
+    return Navigator.of(context).push<int>(
+      PageRouteBuilder<int>(
+        opaque: false, // keep the screen behind painted (see-through dismiss)
+        barrierColor: Colors.transparent, // no scrim over the screen behind
+        transitionDuration: transitionDuration,
+        reverseTransitionDuration: transitionDuration,
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            FadeTransition(
+          opacity: animation,
+          child: KGallery(
+            contentList: contentList,
+            initialIndex: initialIndex,
+            progressWidget: progressWidget,
+            thumbProgressWidget: thumbProgressWidget,
+            enableZoom: enableZoom,
+            enableSwipeToDismiss: enableSwipeToDismiss,
+            enableHapticFeedback: enableHapticFeedback,
+            leading: leading,
+            title: title,
+            noInternetMessage: noInternetMessage,
+            onIndexChanged: onIndexChanged,
+            onClose: onClose,
+            theme: theme,
+            actionMenuBuilder: actionMenuBuilder,
+            cacheManager: cacheManager,
+            memCacheWidth: memCacheWidth,
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -220,6 +316,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         onClose: widget.onClose,
                         noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
                         theme: _effectiveTheme,
+                        cacheManager: widget.cacheManager,
+                        memCacheWidth: widget.memCacheWidth,
                       ),
 
                       _GalleryTopBar(
@@ -253,6 +351,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                         activePlayerNotifier: activePlayerNotifier,
                         activeYoutubeNotifier: activeYoutubeNotifier,
                         theme: _effectiveTheme,
+                        cacheManager: widget.cacheManager,
                       ),
                     ],
                   ),
