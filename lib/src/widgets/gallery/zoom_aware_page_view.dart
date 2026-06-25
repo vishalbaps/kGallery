@@ -1,14 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// A [PageView] whose horizontal swipe is disabled while a child reports
-/// itself as zoomed (scale > 1.0 on the supplied [currentItemScale]
-/// listenable).
+/// A [PageView] whose horizontal swipe is disabled while [swipeLocked] is
+/// `true` — i.e. while the current item is zoomed in OR a pinch (multi-touch)
+/// is in progress. Standing the page-swipe recognizer down on multi-touch lets
+/// [InteractiveViewer]'s scale recognizer win the gesture arena, so pinch-to-
+/// zoom can start from scale 1.0.
 class ZoomAwarePageView extends StatelessWidget {
   final PageController controller;
   final int itemCount;
   final IndexedWidgetBuilder itemBuilder;
-  final ValueListenable<double> currentItemScale;
+  final ValueListenable<bool> swipeLocked;
   final ValueChanged<int>? onPageChanged;
 
   const ZoomAwarePageView({
@@ -16,21 +18,20 @@ class ZoomAwarePageView extends StatelessWidget {
     required this.controller,
     required this.itemCount,
     required this.itemBuilder,
-    required this.currentItemScale,
+    required this.swipeLocked,
     this.onPageChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<double>(
-      valueListenable: currentItemScale,
-      builder: (context, scale, _) {
-        final isZoomed = scale > 1.01;
+    return ValueListenableBuilder<bool>(
+      valueListenable: swipeLocked,
+      builder: (context, locked, _) {
         return PageView.builder(
           controller: controller,
           itemCount: itemCount,
           onPageChanged: onPageChanged,
-          physics: isZoomed
+          physics: locked
               ? const NeverScrollableScrollPhysics()
               : const PageScrollPhysics(),
           itemBuilder: itemBuilder,

@@ -70,6 +70,15 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
   /// Scale of the currently visible item (1.0 = not zoomed).
   final ValueNotifier<double> _currentScale = ValueNotifier<double>(1.0);
 
+  /// True while page-swipe and swipe-to-dismiss must stand down so the pinch
+  /// (scale) gesture can win the arena: either the image is zoomed in OR a
+  /// second finger is down (a pinch in progress).
+  ///
+  /// Without the multi-touch term, the page-swipe + dismiss drag recognizers
+  /// claim a two-finger pinch before [InteractiveViewer]'s scale recognizer
+  /// settles, and the deadlock means pinch-to-zoom never starts from 1.0.
+  final ValueNotifier<bool> _swipeLocked = ValueNotifier<bool>(false);
+
   /// Background opacity for drag-to-dismiss visual feedback (1.0 = solid black).
   final ValueNotifier<double> _bgOpacity = ValueNotifier<double>(1.0);
 
@@ -97,6 +106,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
       vsync: this,
       duration: const Duration(milliseconds: 280),
     );
+    _currentScale.addListener(_updateSwipeLock);
   }
 
   @override
@@ -104,9 +114,18 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
     _stopZoomedDismissAnim();
     _zoomedDismissController.dispose();
     _zoomedDismissOffset.dispose();
+    _currentScale.removeListener(_updateSwipeLock);
     _currentScale.dispose();
+    _swipeLocked.dispose();
     _bgOpacity.dispose();
     super.dispose();
+  }
+
+  /// Recomputes [_swipeLocked] from the current zoom + active-pointer count.
+  /// Cheap and idempotent — only writes when the value actually flips.
+  void _updateSwipeLock() {
+    final locked = _currentScale.value > 1.01 || _activePointers >= 2;
+    if (_swipeLocked.value != locked) _swipeLocked.value = locked;
   }
 
   // ── Pointer event handlers ───────────────────────────────────────────────
@@ -121,6 +140,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
       // pinch never registers as a flick.
       _velocityTracker = null;
     }
+    _updateSwipeLock();
   }
 
   void _onPointerMove(PointerMoveEvent event) {
@@ -136,6 +156,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
   void _onZoomedPointerUp(BuildContext context, PointerUpEvent event) {
     final isLast = _activePointers == 1;
     _activePointers = (_activePointers - 1).clamp(0, 20);
+    _updateSwipeLock();
 
     if (!isLast || _currentScale.value <= 1.01 || !widget.enableSwipeToDismiss) {
       if (_activePointers == 0) _velocityTracker = null;
@@ -272,6 +293,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
       onPointerCancel: (_) {
         _activePointers = (_activePointers - 1).clamp(0, 20);
         if (_activePointers == 0) _velocityTracker = null;
+        _updateSwipeLock();
       },
       child: Stack(
         fit: StackFit.expand,
@@ -305,7 +327,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
                 child: ZoomAwarePageView(
                   controller: widget.pageController,
                   itemCount: state.items.length,
-                  currentItemScale: _currentScale,
+                  swipeLocked: _swipeLocked,
                   onPageChanged: (index) {
                     _resetScale();
                     context.read<GalleryBloc>().add(GalleryIndexChanged(index));
@@ -391,7 +413,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
 
     return DismissibleDragArea(
       enabled: true,
-      scaleNotifier: _currentScale,
+      dragLocked: _swipeLocked,
       onDismiss: () => _handleDismiss(context),
       onDragProgress: (progress) => _handleDragProgress(context, progress),
       onDragActiveChanged: (active) {

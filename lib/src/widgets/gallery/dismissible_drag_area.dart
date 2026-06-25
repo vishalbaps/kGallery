@@ -12,13 +12,16 @@ import 'package:flutter/material.dart';
 ///
 /// On release below the threshold, the child snaps back with a spring curve.
 ///
-/// If [scaleNotifier] value is > 1.0, drag is suppressed so zoomed-in
-/// images can still be panned without triggering a dismiss.
+/// While [dragLocked] is `true`, the vertical-drag recognizer is not attached,
+/// so the dismiss gesture is suppressed. The parent locks during zoom (so a
+/// zoomed-in image can be panned without dismissing) and during an active
+/// pinch (so a two-finger gesture reaches [InteractiveViewer]'s scale
+/// recognizer instead of being claimed as a dismiss drag).
 class DismissibleDragArea extends StatefulWidget {
   final Widget child;
   final VoidCallback onDismiss;
   final bool enabled;
-  final ValueListenable<double>? scaleNotifier;
+  final ValueListenable<bool>? dragLocked;
   final double dismissThreshold;
   final double velocityThreshold;
   final double horizontalCancelRatio;
@@ -31,7 +34,7 @@ class DismissibleDragArea extends StatefulWidget {
     required this.child,
     required this.onDismiss,
     this.enabled = true,
-    this.scaleNotifier,
+    this.dragLocked,
     this.dismissThreshold = 150.0,
     this.velocityThreshold = 700.0,
     this.horizontalCancelRatio = 1.0,
@@ -65,8 +68,6 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
     super.dispose();
   }
 
-  bool get _isZoomed => (widget.scaleNotifier?.value ?? 1.0) > 1.01;
-
   void _onAnimate() {
     if (_offsetAnimation != null) {
       setState(() {
@@ -88,7 +89,9 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
   }
 
   void _handleStart(DragStartDetails details) {
-    if (!widget.enabled || _isZoomed) return;
+    // When locked (zoomed / pinching) the drag callbacks are detached, so this
+    // only fires for a genuine single-finger dismiss drag.
+    if (!widget.enabled) return;
     _animController.stop();
     _setDragging(true);
   }
@@ -171,18 +174,19 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
       ),
     );
 
-    final scaleListenable = widget.scaleNotifier;
-    if (scaleListenable == null) {
+    final lockListenable = widget.dragLocked;
+    if (lockListenable == null) {
       return _buildDetector(dragEnabled: widget.enabled, child: content);
     }
 
-    // While the image is zoomed, do NOT attach the vertical-drag recognizer.
-    // If we did, it would win the gesture arena over InteractiveViewer's pan
-    // and block the user from panning the zoomed image vertically.
-    return ValueListenableBuilder<double>(
-      valueListenable: scaleListenable,
-      builder: (context, scale, child) {
-        final dragEnabled = widget.enabled && scale <= 1.01;
+    // While locked (image zoomed in, or a pinch in progress), do NOT attach the
+    // vertical-drag recognizer. If we did, it would win the gesture arena over
+    // InteractiveViewer's scale/pan — blocking pinch-to-zoom from 1.0 and
+    // vertical panning of a zoomed image.
+    return ValueListenableBuilder<bool>(
+      valueListenable: lockListenable,
+      builder: (context, locked, child) {
+        final dragEnabled = widget.enabled && !locked;
         return _buildDetector(dragEnabled: dragEnabled, child: child!);
       },
       child: content,
