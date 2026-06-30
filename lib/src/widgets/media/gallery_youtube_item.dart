@@ -1,7 +1,9 @@
 import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
@@ -37,8 +39,7 @@ class GalleryYoutubeItem extends StatefulWidget {
   State<GalleryYoutubeItem> createState() => _GalleryYoutubeItemState();
 }
 
-class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
-    with GalleryUIHideMixin<GalleryYoutubeItem> {
+class _GalleryYoutubeItemState extends State<GalleryYoutubeItem> with GalleryUIHideMixin<GalleryYoutubeItem> {
   YoutubePlayerController? _controller;
   bool _previousIsReady = false;
   bool _previousIsPlaying = false;
@@ -142,9 +143,7 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     if (v.isPlaying != _previousIsPlaying) {
       _previousIsPlaying = v.isPlaying;
       final state = widget.galleryBloc.state;
-      if (v.isPlaying &&
-          state.isUIVisible &&
-          state.currentIndex == widget.index) {
+      if (v.isPlaying && state.isUIVisible && state.currentIndex == widget.index) {
         startHideUITimer(widget.galleryBloc, widget.index);
       } else {
         cancelHideUITimer();
@@ -257,24 +256,30 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
         children: [
           _buildPlayer(),
           GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          if (_controller != null)
-            Center(
-              child: AnimatedBuilder(
-                animation: _controller!,
-                builder: (context, _) {
-                  final c = _controller;
-                  if (c == null) return const SizedBox.shrink();
-                  final v = c.value;
-                  return GalleryCenterControls(
+          // Until the controller exists / the player reports ready, the
+          // WebView paints black — cover it with the loader so a swipe
+          // between videos shows progress instead of a black screen.
+          if (_controller == null)
+            const GalleryMediaLoader()
+          else
+            AnimatedBuilder(
+              animation: _controller!,
+              builder: (context, _) {
+                final c = _controller;
+                if (c == null) return const SizedBox.shrink();
+                final v = c.value;
+                if (!v.isReady) return const GalleryMediaLoader();
+                return Center(
+                  child: GalleryCenterControls(
                     isPlaying: v.isPlaying,
                     isReady: v.isReady,
                     bufferingStream: null,
                     initialBuffering: v.playerState == PlayerState.buffering,
                     galleryBloc: widget.galleryBloc,
                     onTap: _togglePlayPause,
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
           if (_controller != null)
             Positioned.fill(
