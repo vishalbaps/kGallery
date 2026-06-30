@@ -1,8 +1,10 @@
 import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
+
 import '../../bloc/gallery_bloc.dart';
 
 /// Shared internals for the per-type media item widgets
@@ -47,8 +49,7 @@ Future<bool> mediaConnectivityCheck(
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          noInternetMessage ??
-              'No internet connection. Please check your network.',
+          noInternetMessage ?? 'No internet connection. Please check your network.',
         ),
         duration: const Duration(seconds: 2),
       ),
@@ -95,9 +96,7 @@ class GalleryCenterControls extends StatelessWidget {
               return const CircularProgressIndicator(color: Colors.white);
             },
           )
-        : (initialBuffering
-            ? const CircularProgressIndicator(color: Colors.white)
-            : const SizedBox.shrink());
+        : (initialBuffering ? const CircularProgressIndicator(color: Colors.white) : const SizedBox.shrink());
 
     return Stack(
       alignment: Alignment.center,
@@ -108,8 +107,7 @@ class GalleryCenterControls extends StatelessWidget {
           buildWhen: (prev, curr) => prev.isUIVisible != curr.isUIVisible,
           builder: (context, state) {
             final isVisible = state.isUIVisible;
-            final hideButton =
-                !isVisible || (isPlaying && initialBuffering) || !isReady;
+            final hideButton = !isVisible || (isPlaying && initialBuffering) || !isReady;
             return IgnorePointer(
               ignoring: hideButton,
               child: AnimatedOpacity(
@@ -143,6 +141,18 @@ class GalleryCenterControls extends StatelessWidget {
   }
 }
 
+class GalleryMediaLoader extends StatelessWidget {
+  const GalleryMediaLoader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Colors.black,
+      child: Center(child: CircularProgressIndicator(color: Colors.white)),
+    );
+  }
+}
+
 /// Shared rendering for the fullscreen button — positions itself inside
 /// the visible video frame computed from [videoAspect] and screen aspect.
 class GalleryFullscreenButton extends StatelessWidget {
@@ -161,21 +171,15 @@ class GalleryFullscreenButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final double screenAspect = screenSize.width / screenSize.height;
-    final double renderedH = videoAspect >= screenAspect
-        ? screenSize.width / videoAspect
-        : screenSize.height;
-    final double renderedW = videoAspect >= screenAspect
-        ? screenSize.width
-        : screenSize.height * videoAspect;
+    final double renderedH = videoAspect >= screenAspect ? screenSize.width / videoAspect : screenSize.height;
+    final double renderedW = videoAspect >= screenAspect ? screenSize.width : screenSize.height * videoAspect;
 
     final double buttonBottom = (screenSize.height - renderedH) / 2 + 16.0;
     final double buttonRight = (screenSize.width - renderedW) / 2 + 16.0;
 
     return BlocBuilder<GalleryBloc, GalleryState>(
       bloc: galleryBloc,
-      buildWhen: (prev, curr) =>
-          prev.isUIVisible != curr.isUIVisible ||
-          prev.isSliding != curr.isSliding,
+      buildWhen: (prev, curr) => prev.isUIVisible != curr.isUIVisible || prev.isSliding != curr.isSliding,
       builder: (context, state) {
         final visible = state.isUIVisible && !state.isSliding;
         return Stack(
@@ -231,12 +235,10 @@ class GalleryMediaKitFullscreenButton extends StatefulWidget {
   });
 
   @override
-  State<GalleryMediaKitFullscreenButton> createState() =>
-      _GalleryMediaKitFullscreenButtonState();
+  State<GalleryMediaKitFullscreenButton> createState() => _GalleryMediaKitFullscreenButtonState();
 }
 
-class _GalleryMediaKitFullscreenButtonState
-    extends State<GalleryMediaKitFullscreenButton> {
+class _GalleryMediaKitFullscreenButtonState extends State<GalleryMediaKitFullscreenButton> {
   int? _width;
   int? _height;
   StreamSubscription<int?>? _widthSub;
@@ -311,8 +313,7 @@ class GalleryMediaTapOverlay extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          galleryBloc
-              .add(GalleryToggleUI(isVisible: !galleryBloc.state.isUIVisible));
+          galleryBloc.add(GalleryToggleUI(isVisible: !galleryBloc.state.isUIVisible));
         },
         child: const SizedBox.expand(),
       ),
