@@ -17,8 +17,10 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ### 📺 Preview
 
-![kGallery Demo Video](https://raw.githubusercontent.com/vishalbaps/kGallery/main/screenshots/demo.gif)
-
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vishalbaps/kGallery/main/screenshots/demo.gif" alt="kGallery Demo Video" width="30%" />
+</p>
+  
 ## ✨ Features
 
 - 🖼️ **Multi-Media Support**: Seamlessly view images, watch videos, listen to audio, and play YouTube links — all with unified controls.
@@ -39,7 +41,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ```yaml
 dependencies:
-  k_gallery: ^1.1.0
+  k_gallery: ^1.1.1
 ```
 
 ### 2. Platform Setup
