@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
 import 'package:media_kit_video/media_kit_video.dart';
+
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
@@ -33,8 +35,7 @@ class GalleryVideoItem extends StatefulWidget {
   State<GalleryVideoItem> createState() => _GalleryVideoItemState();
 }
 
-class _GalleryVideoItemState extends State<GalleryVideoItem>
-    with GalleryUIHideMixin<GalleryVideoItem> {
+class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideMixin<GalleryVideoItem> {
   Player? _player;
   VideoController? _videoController;
   final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
@@ -64,9 +65,7 @@ class _GalleryVideoItemState extends State<GalleryVideoItem>
     _playingSubscription = p.stream.playing.listen((isPlaying) {
       if (!mounted) return;
       final state = widget.galleryBloc.state;
-      if (isPlaying &&
-          state.isUIVisible &&
-          state.currentIndex == widget.index) {
+      if (isPlaying && state.isUIVisible && state.currentIndex == widget.index) {
         startHideUITimer(widget.galleryBloc, widget.index);
       } else {
         cancelHideUITimer();
@@ -130,9 +129,7 @@ class _GalleryVideoItemState extends State<GalleryVideoItem>
       noInternetMessage: widget.noInternetMessage,
     );
     if (!online) return;
-    if (mounted &&
-        _player == p &&
-        widget.galleryBloc.state.currentIndex == widget.index) {
+    if (mounted && _player == p && widget.galleryBloc.state.currentIndex == widget.index) {
       p.play();
     }
   }
@@ -196,24 +193,37 @@ class _GalleryVideoItemState extends State<GalleryVideoItem>
           // slide gestures) so they don't repaint together.
           RepaintBoundary(child: _buildVideo()),
           GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          if (_player != null)
-            Center(
-              child: StreamBuilder<bool>(
-                initialData: _player!.state.playing,
-                stream: _player!.stream.playing,
-                builder: (context, snapshot) {
-                  final p = _player;
-                  if (p == null) return const SizedBox.shrink();
-                  return GalleryCenterControls(
-                    isPlaying: snapshot.data ?? false,
-                    isReady: true,
-                    bufferingStream: p.stream.buffering,
-                    initialBuffering: p.state.buffering,
-                    galleryBloc: widget.galleryBloc,
-                    onTap: _togglePlayPause,
-                  );
-                },
-              ),
+          // Until the controller exists / the first frame is painted, the
+          // Video texture is black — cover it with the loader so a swipe
+          // between videos shows progress instead of a black screen.
+          // `rect` flips from null → non-null exactly when the first frame
+          // renders, so we read it directly instead of mirroring it in state.
+          if (_videoController == null)
+            const GalleryMediaLoader()
+          else
+            ValueListenableBuilder<Rect?>(
+              valueListenable: _videoController!.rect,
+              builder: (context, rect, _) {
+                if (rect == null) return const GalleryMediaLoader();
+                final p = _player;
+                if (p == null) return const SizedBox.shrink();
+                return Center(
+                  child: StreamBuilder<bool>(
+                    initialData: p.state.playing,
+                    stream: p.stream.playing,
+                    builder: (context, snapshot) {
+                      return GalleryCenterControls(
+                        isPlaying: snapshot.data ?? false,
+                        isReady: true,
+                        bufferingStream: p.stream.buffering,
+                        initialBuffering: p.state.buffering,
+                        galleryBloc: widget.galleryBloc,
+                        onTap: _togglePlayPause,
+                      );
+                    },
+                  ),
+                );
+              },
             ),
           if (_player != null)
             Positioned.fill(

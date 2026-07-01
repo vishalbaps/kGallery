@@ -254,6 +254,17 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
               'full-screen viewer.',
         );
       }
+      if (index == 5) {
+        return const GalleryItem(
+          url: 'https://www.youtube.com/watch?v=a3ICNMQW7Ok',
+          type: GalleryItemType.youtube,
+          title: 'YouTube (Fullscreen Controls)',
+          description:
+              'A second YouTube item. Enter fullscreen and confirm the '
+              'controls auto-hide after 3 seconds and reappear on tap, '
+              'matching the media_kit video controls.',
+        );
+      }
 
       String? title;
       String? description;

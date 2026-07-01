@@ -1,3 +1,9 @@
+## 1.1.1
+
+- **Fix**: Video and YouTube items no longer flash a **black screen while loading**. Swiping to a video previously revealed the raw (black) video texture / YouTube WebView until the first frame rendered. A loading spinner (`GalleryMediaLoader`) now covers the media until it is actually ready — the video controller paints its first frame (`VideoController.rect` becomes non-null) or the YouTube player reports `isReady`.
+- **Improve**: YouTube **fullscreen** controls now match the inline media controls — the play/pause button and seekbar auto-hide after 3s of playback and toggle on tap, and the buffering spinner shows whenever the player is buffering.
+- **Example**: Added a second YouTube item to the demo gallery to exercise the fullscreen auto-hide controls.
+
 ## 1.1.0
 
 - **New**: `KGallery.show(context, contentList: ..., initialIndex: ...)` — opens the gallery on a **non-opaque route** so the screen behind stays visible through the background fade during swipe-to-dismiss. Returns the last-viewed index. This is now the recommended way to present the gallery; pushing `KGallery` on a normal opaque route (e.g. `MaterialPageRoute`) makes the swipe-down fade reveal only black. Mirrors the `showDialog`/`showModalBottomSheet` convention. The `KGallery` widget constructor is unchanged.
