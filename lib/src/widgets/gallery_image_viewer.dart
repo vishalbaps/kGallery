@@ -174,11 +174,11 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
     final absX = v.dx.abs();
     final absY = v.dy.abs();
 
-    // Deliberate fast downward flick → dismiss (animated fly-away). The high
-    // threshold keeps ordinary panning (which releases more slowly) from
-    // dismissing by accident.
-    if (v.dy > 700 && absY > absX * 1.5) {
-      _triggerZoomedFlyAway(context);
+    // Deliberate fast vertical flick (up OR down) → dismiss (animated
+    // fly-away toward that edge). The high threshold keeps ordinary panning of
+    // a zoomed image (which releases more slowly) from dismissing by accident.
+    if (absY > 700 && absY > absX * 1.5) {
+      _triggerZoomedFlyAway(context, up: v.dy < 0);
       return;
     }
 
@@ -198,13 +198,14 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
     _zoomedDismissController.stop();
   }
 
-  /// Animates the page content off the bottom of the screen — matches the
-  /// unzoomed [DismissibleDragArea] fly-away — then pops the route.
-  void _triggerZoomedFlyAway(BuildContext context) {
+  /// Animates the page content off the matching edge of the screen (bottom for
+  /// a downward flick, top for an upward one) — matches the unzoomed
+  /// [DismissibleDragArea] fly-away — then pops the route.
+  void _triggerZoomedFlyAway(BuildContext context, {bool up = false}) {
     _stopZoomedDismissAnim();
 
     final startOffset = _zoomedDismissOffset.value;
-    final endDy = _screenHeight + 200.0;
+    final endDy = up ? -(_screenHeight + 200.0) : _screenHeight + 200.0;
 
     final anim = Tween<Offset>(
       begin: startOffset,
@@ -213,7 +214,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
 
     _zoomedDismissListener = () {
       _zoomedDismissOffset.value = anim.value;
-      final progress = (anim.value.dy / endDy).clamp(0.0, 1.0);
+      final progress = (anim.value.dy.abs() / endDy.abs()).clamp(0.0, 1.0);
       _bgOpacity.value = (1.0 - progress).clamp(0.0, 1.0);
     };
 
@@ -314,7 +315,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
               return ValueListenableBuilder<Offset>(
                 valueListenable: _zoomedDismissOffset,
                 builder: (context, dismissOffset, child) {
-                  final progress = (dismissOffset.dy / 400.0).clamp(0.0, 1.0);
+                  final progress = (dismissOffset.dy.abs() / 400.0).clamp(0.0, 1.0);
                   final scale = 1.0 - progress * 0.12;
                   return Transform.scale(
                     scale: scale,

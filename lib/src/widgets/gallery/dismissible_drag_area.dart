@@ -3,12 +3,18 @@ import 'package:flutter/material.dart';
 
 /// Wraps a child with vertical-drag-to-dismiss behavior (Apple Photos style).
 ///
+/// Dismiss works in BOTH directions: swipe down past [dismissThreshold] or
+/// swipe up past [upDismissThreshold]. The upward threshold is intentionally
+/// smaller so the gallery can be closed with an easy one-handed upward flick,
+/// while the (already comfortable) downward gesture keeps its larger threshold.
+///
 /// While dragging the child translates with the finger and subtly shrinks.
 /// The background fade is driven via [onDragProgress] (0.0 = opaque, 1.0 = transparent).
 ///
-/// On release past [dismissThreshold] / [velocityThreshold], the child
-/// flies off the bottom of the screen and THEN [onDismiss] is called so the
-/// route pop happens after the animation (no abrupt cut).
+/// On release past the direction's distance threshold / [velocityThreshold],
+/// the child flies off the matching edge of the screen (down for a downward
+/// gesture, up for an upward one) and THEN [onDismiss] is called so the route
+/// pop happens after the animation (no abrupt cut).
 ///
 /// On release below the threshold, the child snaps back with a spring curve.
 ///
@@ -23,6 +29,11 @@ class DismissibleDragArea extends StatefulWidget {
   final bool enabled;
   final ValueListenable<bool>? dragLocked;
   final double dismissThreshold;
+
+  /// Distance (px) an upward drag must travel to dismiss. Smaller than
+  /// [dismissThreshold] so closing the gallery with an upward flick is easy
+  /// to do one-handed.
+  final double upDismissThreshold;
   final double velocityThreshold;
   final double horizontalCancelRatio;
   final Duration snapBackDuration;
@@ -36,6 +47,7 @@ class DismissibleDragArea extends StatefulWidget {
     this.enabled = true,
     this.dragLocked,
     this.dismissThreshold = 150.0,
+    this.upDismissThreshold = 90.0,
     this.velocityThreshold = 700.0,
     this.horizontalCancelRatio = 1.0,
     this.snapBackDuration = const Duration(milliseconds: 200),
@@ -109,12 +121,15 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
 
     final dy = _offset.dy;
     final velocity = details.velocity.pixelsPerSecond.dy;
-    final shouldDismiss = widget.enabled && (dy > widget.dismissThreshold || velocity > widget.velocityThreshold);
+
+    final dismissDown = dy > widget.dismissThreshold || velocity > widget.velocityThreshold;
+    final dismissUp = -dy > widget.upDismissThreshold || -velocity > widget.velocityThreshold;
+    final shouldDismiss = widget.enabled && (dismissDown || dismissUp);
 
     if (shouldDismiss) {
       // Keep _dragging=true so _handleDragEnded never fires (no opacity flash).
       // The fly-away animation handles everything; onDismiss fires at the end.
-      _flyAway();
+      _flyAway(up: dy < 0);
     } else {
       _setDragging(false);
       _snapBack();
@@ -127,9 +142,10 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
     _snapBack();
   }
 
-  /// Animates the image off the bottom of the screen, then calls [onDismiss].
-  void _flyAway() {
-    final targetDy = _screenHeight + 200.0;
+  /// Animates the image off the matching edge of the screen (bottom for a
+  /// downward gesture, top for an upward one), then calls [onDismiss].
+  void _flyAway({bool up = false}) {
+    final targetDy = up ? -(_screenHeight + 200.0) : _screenHeight + 200.0;
     _offsetAnimation = Tween<Offset>(
       begin: _offset,
       end: Offset(0, targetDy),
@@ -155,10 +171,9 @@ class _DismissibleDragAreaState extends State<DismissibleDragArea> with SingleTi
       ..forward();
   }
 
-  /// Subtle scale-down while dragging downward — gives the Apple Photos feel.
+  /// Subtle scale-down while dragging in either direction — Apple Photos feel.
   double get _dragScale {
-    if (_offset.dy <= 0) return 1.0;
-    final progress = (_offset.dy / 400.0).clamp(0.0, 1.0);
+    final progress = (_offset.dy.abs() / 400.0).clamp(0.0, 1.0);
     return 1.0 - progress * 0.12;
   }
 

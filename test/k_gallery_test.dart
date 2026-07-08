@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:k_gallery/k_gallery.dart';
 import 'package:k_gallery/src/utils/image_source.dart';
+import 'package:k_gallery/src/widgets/gallery/dismissible_drag_area.dart';
 
 /// A valid 1×1 PNG encoded as an inline base64 data URI.
 const String _validBase64Image =
@@ -171,6 +172,68 @@ void main() {
         isTrue,
       );
       expect(tester.takeException(), isNull);
+    });
+
+    group('swipe-to-dismiss', () {
+      Widget buildHarness(void Function(int) onClose) => MaterialApp(
+            home: Scaffold(
+              body: KGallery(
+                contentList: const [
+                  GalleryItem(url: _validBase64Image, title: 'A'),
+                  GalleryItem(url: _validBase64Image, title: 'B'),
+                ],
+                initialIndex: 0,
+                onClose: onClose,
+              ),
+            ),
+          );
+
+      testWidgets('upward fling dismisses', (tester) async {
+        int? closed;
+        await tester.pumpWidget(buildHarness((i) => closed = i));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        await tester.fling(
+          find.byType(DismissibleDragArea),
+          const Offset(0, -300),
+          1200,
+        );
+        await tester.pumpAndSettle();
+
+        expect(closed, isNotNull);
+      });
+
+      testWidgets('downward fling still dismisses (regression)', (tester) async {
+        int? closed;
+        await tester.pumpWidget(buildHarness((i) => closed = i));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        await tester.fling(
+          find.byType(DismissibleDragArea),
+          const Offset(0, 300),
+          1200,
+        );
+        await tester.pumpAndSettle();
+
+        expect(closed, isNotNull);
+      });
+
+      testWidgets('tiny upward drag below threshold snaps back (no dismiss)', (
+        tester,
+      ) async {
+        int? closed;
+        await tester.pumpWidget(buildHarness((i) => closed = i));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        // Slow, short drag: distance < upDismissThreshold and ~zero velocity.
+        await tester.drag(
+          find.byType(DismissibleDragArea),
+          const Offset(0, -40),
+        );
+        await tester.pumpAndSettle();
+
+        expect(closed, isNull);
+      });
     });
 
     testWidgets('handles a mix of base64 and network items', (tester) async {
