@@ -195,8 +195,7 @@ class KGallery extends StatefulWidget {
         barrierColor: Colors.transparent, // no scrim over the screen behind
         transitionDuration: transitionDuration,
         reverseTransitionDuration: transitionDuration,
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            FadeTransition(
+        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
           opacity: animation,
           child: KGallery(
             contentList: contentList,
@@ -246,11 +245,12 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
     try {
       KGallery.ensureInitialized();
     } catch (e) {
-      debugPrint('KGallery: MediaKit initialization failed or already initialized: $e');
+      debugPrint(
+          'KGallery: MediaKit initialization failed or already initialized: $e');
     }
 
-    _effectiveProgressWidget =
-        widget.progressWidget ?? const Center(child: CircularProgressIndicator(color: Colors.white));
+    _effectiveProgressWidget = widget.progressWidget ??
+        const Center(child: CircularProgressIndicator(color: Colors.white));
 
     _effectiveTheme = widget.theme ?? GalleryTheme.dark();
 
@@ -285,83 +285,115 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
         final double topBarHeight = isTablet ? 80 : 56;
         final double horizontalPadding = isTablet ? 32 : 16;
 
-        return PopScope(
-          canPop: true,
-          onPopInvokedWithResult: (didPop, _) {
-            if (didPop) {
-              widget.onClose?.call(_galleryBloc.state.currentIndex);
-            }
-          },
-          child: AnnotatedRegion<SystemUiOverlayStyle>(
-            value: SystemUiOverlayStyle.light,
-            child: BlocProvider.value(
-              value: _galleryBloc,
-              child: BlocListener<GalleryBloc, GalleryState>(
-                listenWhen: (previous, current) => previous.currentIndex != current.currentIndex,
-                listener: (context, state) {
-                  widget.onIndexChanged?.call(state.currentIndex);
-                },
-                child: Scaffold(
-                  backgroundColor: Colors.transparent,
-                  body: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      GalleryImageViewer(
-                        pageController: _pageController,
-                        progressWidget: _effectiveProgressWidget,
-                        enableZoom: widget.enableZoom,
-                        enableSwipeToDismiss: widget.enableSwipeToDismiss,
-                        activePlayerNotifier: activePlayerNotifier,
-                        activeYoutubeNotifier: activeYoutubeNotifier,
-                        onClose: widget.onClose,
-                        noInternetMessage: widget.noInternetMessage ?? _effectiveTheme.noInternetMessage,
-                        theme: _effectiveTheme,
-                        cacheManager: widget.cacheManager,
-                        memCacheWidth: widget.memCacheWidth,
-                      ),
+        return ValueListenableBuilder<YoutubePlayerController?>(
+          valueListenable: activeYoutubeNotifier,
+          builder: (context, activeYoutube, _) {
+            return PopScope(
+              // While a YouTube WebView is live, block the pop so its audio can
+              // be silenced BEFORE the route (and the WebView with it) is torn
+              // down. On iPadOS the WKWebView keeps its audio session playing
+              // after the platform view is disposed, so a bare dispose leaves
+              // the video playing in the background; pausing while the WebView
+              // is still mounted stops it reliably. iPhone stops on teardown, so
+              // this path is effectively a no-op there.
+              canPop: activeYoutube == null,
+              onPopInvokedWithResult: (didPop, _) {
+                if (didPop) {
+                  widget.onClose?.call(_galleryBloc.state.currentIndex);
+                } else {
+                  _dismissAfterSilencingYoutube(activeYoutube);
+                }
+              },
+              child: AnnotatedRegion<SystemUiOverlayStyle>(
+                value: SystemUiOverlayStyle.light,
+                child: BlocProvider.value(
+                  value: _galleryBloc,
+                  child: BlocListener<GalleryBloc, GalleryState>(
+                    listenWhen: (previous, current) =>
+                        previous.currentIndex != current.currentIndex,
+                    listener: (context, state) {
+                      widget.onIndexChanged?.call(state.currentIndex);
+                    },
+                    child: Scaffold(
+                      backgroundColor: Colors.transparent,
+                      body: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          GalleryImageViewer(
+                            pageController: _pageController,
+                            progressWidget: _effectiveProgressWidget,
+                            enableZoom: widget.enableZoom,
+                            enableSwipeToDismiss: widget.enableSwipeToDismiss,
+                            activePlayerNotifier: activePlayerNotifier,
+                            activeYoutubeNotifier: activeYoutubeNotifier,
+                            onClose: widget.onClose,
+                            noInternetMessage: widget.noInternetMessage ??
+                                _effectiveTheme.noInternetMessage,
+                            theme: _effectiveTheme,
+                            cacheManager: widget.cacheManager,
+                            memCacheWidth: widget.memCacheWidth,
+                          ),
 
-                      _GalleryTopBar(
-                        topBarHeight: topBarHeight,
-                        horizontalPadding: horizontalPadding,
-                        leading: widget.leading,
-                        title: widget.title,
-                        actionMenuBuilder: widget.actionMenuBuilder,
-                        onClose: widget.onClose,
-                        theme: _effectiveTheme,
-                      ),
+                          _GalleryTopBar(
+                            topBarHeight: topBarHeight,
+                            horizontalPadding: horizontalPadding,
+                            leading: widget.leading,
+                            title: widget.title,
+                            actionMenuBuilder: widget.actionMenuBuilder,
+                            onClose: widget.onClose,
+                            theme: _effectiveTheme,
+                          ),
 
-                      _GalleryOverlayLayer(
-                        constraints: constraints,
-                        pageController: _pageController,
-                        thumbnailStripHeight: thumbnailStripHeight,
-                        topBarHeight: topBarHeight,
-                        horizontalPadding: horizontalPadding,
-                        textContentKey: _textContentKey,
-                        activePlayerNotifier: activePlayerNotifier,
-                        activeYoutubeNotifier: activeYoutubeNotifier,
-                        theme: _effectiveTheme,
-                        animateHeightTo: _animateHeightTo,
-                      ),
+                          _GalleryOverlayLayer(
+                            constraints: constraints,
+                            pageController: _pageController,
+                            thumbnailStripHeight: thumbnailStripHeight,
+                            topBarHeight: topBarHeight,
+                            horizontalPadding: horizontalPadding,
+                            textContentKey: _textContentKey,
+                            activePlayerNotifier: activePlayerNotifier,
+                            activeYoutubeNotifier: activeYoutubeNotifier,
+                            theme: _effectiveTheme,
+                            animateHeightTo: _animateHeightTo,
+                          ),
 
-                      // Adaptive Thumbnail Strip (Persistent on bottom)
-                      GalleryThumbnailStrip(
-                        enableHapticFeedback: widget.enableHapticFeedback,
-                        pageController: _pageController,
-                        thumbProgressWidget: _effectiveThumbProgressWidget,
-                        activePlayerNotifier: activePlayerNotifier,
-                        activeYoutubeNotifier: activeYoutubeNotifier,
-                        theme: _effectiveTheme,
-                        cacheManager: widget.cacheManager,
+                          // Adaptive Thumbnail Strip (Persistent on bottom)
+                          GalleryThumbnailStrip(
+                            enableHapticFeedback: widget.enableHapticFeedback,
+                            pageController: _pageController,
+                            thumbProgressWidget: _effectiveThumbProgressWidget,
+                            activePlayerNotifier: activePlayerNotifier,
+                            activeYoutubeNotifier: activeYoutubeNotifier,
+                            theme: _effectiveTheme,
+                            cacheManager: widget.cacheManager,
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
+  }
+
+  /// Pauses and mutes the active YouTube controller, then pops the route.
+  ///
+  /// The pop is deferred a beat so the pause/mute JavaScript runs in the
+  /// WebView while it is still mounted. Without this, iPadOS keeps the
+  /// underlying WKWebView's audio session playing after the route (and the
+  /// WebView) is torn down, so the video keeps playing in the background.
+  Future<void> _dismissAfterSilencingYoutube(
+    YoutubePlayerController? youtubeController,
+  ) async {
+    youtubeController?.pause();
+    youtubeController?.mute();
+    await Future<void>.delayed(const Duration(milliseconds: 250));
+    if (!mounted) return;
+    Navigator.of(context).pop(_galleryBloc.state.currentIndex);
   }
 
   void _animateHeightTo(double start, double target) {
@@ -393,7 +425,8 @@ class _GalleryTopBar extends StatelessWidget {
   final double horizontalPadding;
   final Widget? leading;
   final String? title;
-  final Widget Function(BuildContext, int, List<GalleryItem>)? actionMenuBuilder;
+  final Widget Function(BuildContext, int, List<GalleryItem>)?
+      actionMenuBuilder;
   final void Function(int)? onClose;
   final GalleryTheme theme;
 
@@ -440,7 +473,8 @@ class _GalleryTopBar extends StatelessWidget {
         return AnimatedPositioned(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          top: (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
+          top:
+              (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
           left: 0,
           right: 0,
           child: ClipRect(
@@ -459,7 +493,10 @@ class _GalleryTopBar extends StatelessWidget {
                   children: [
                     leadingWidget,
                     Expanded(child: Center(child: titleWidget)),
-                    if (customActions != null) customActions else SizedBox(width: isTablet ? 64 : 48),
+                    if (customActions != null)
+                      customActions
+                    else
+                      SizedBox(width: isTablet ? 64 : 48),
                   ],
                 ),
               ),
@@ -500,7 +537,8 @@ class _GalleryOverlayLayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
-        final currentItem = state.items.isNotEmpty ? state.items[state.currentIndex] : null;
+        final currentItem =
+            state.items.isNotEmpty ? state.items[state.currentIndex] : null;
         if (currentItem == null) return const SizedBox.shrink();
 
         final bool hasSeekbar = currentItem.type == GalleryItemType.video ||
@@ -611,7 +649,8 @@ class _GalleryTextPanel extends StatelessWidget {
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -637,7 +676,8 @@ class _GalleryTextPanel extends StatelessWidget {
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
-        final renderBox = textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        final renderBox =
+            textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -666,11 +706,13 @@ class _GalleryTextPanel extends StatelessWidget {
             width: double.infinity,
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
             decoration: BoxDecoration(
-
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [Colors.black.withValues(alpha: 0.5), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.5),
+                  Colors.transparent
+                ],
                 stops: const [0.3, 1.0],
               ),
             ),
@@ -736,4 +778,3 @@ class _GalleryTextPanel extends StatelessWidget {
     );
   }
 }
-
