@@ -1,3 +1,8 @@
+## 1.1.2
+
+- **New**: Drag-to-dismiss now works in **both directions** — swipe up *or* down to close the gallery. The upward threshold is intentionally smaller (90px vs the 150px downward threshold) for an easy one-handed upward flick, and the image flies off the matching edge (top or bottom) before the route pops. Applies to both zoomed and unzoomed images.
+- **Fix (iPadOS)**: YouTube videos no longer keep playing audio in the background after the gallery is dismissed. On iPadOS the `WKWebView` kept its audio session alive after the platform view was disposed; the gallery now pauses and mutes the active YouTube player while the WebView is still mounted (deferring the route pop briefly), and also pauses on other teardown paths (e.g. swiping to another item).
+
 ## 1.1.1
 
 - **Fix**: Video and YouTube items no longer flash a **black screen while loading**. Swiping to a video previously revealed the raw (black) video texture / YouTube WebView until the first frame rendered. A loading spinner (`GalleryMediaLoader`) now covers the media until it is actually ready — the video controller paints its first frame (`VideoController.rect` becomes non-null) or the YouTube player reports `isReady`.
