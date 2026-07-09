@@ -39,7 +39,8 @@ class GalleryYoutubeItem extends StatefulWidget {
   State<GalleryYoutubeItem> createState() => _GalleryYoutubeItemState();
 }
 
-class _GalleryYoutubeItemState extends State<GalleryYoutubeItem> with GalleryUIHideMixin<GalleryYoutubeItem> {
+class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
+    with GalleryUIHideMixin<GalleryYoutubeItem> {
   YoutubePlayerController? _controller;
   bool _previousIsReady = false;
   bool _previousIsPlaying = false;
@@ -143,7 +144,9 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem> with GalleryUIH
     if (v.isPlaying != _previousIsPlaying) {
       _previousIsPlaying = v.isPlaying;
       final state = widget.galleryBloc.state;
-      if (v.isPlaying && state.isUIVisible && state.currentIndex == widget.index) {
+      if (v.isPlaying &&
+          state.isUIVisible &&
+          state.currentIndex == widget.index) {
         startHideUITimer(widget.galleryBloc, widget.index);
       } else {
         cancelHideUITimer();
@@ -160,6 +163,12 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem> with GalleryUIH
     _controller = null;
     _previousIsReady = false;
     _previousIsPlaying = false;
+    // Silence playback before disposing. The gallery's close path pauses while
+    // the WebView is still mounted (see KGallery._dismissAfterSilencingYoutube);
+    // this is a best-effort stop for the other teardown paths (e.g. swiping to
+    // another item), since on iPadOS disposing the WKWebView alone does not
+    // reliably halt its audio session.
+    c.pause();
     c.dispose();
 
     final notifier = widget.activeYoutubeNotifier;
