@@ -34,6 +34,11 @@ mixin _$GalleryState {
   /// Current height of the draggable text panel.
   double get textPanelHeight => throw _privateConstructorUsedError;
 
+  /// Indexes of items whose remote media couldn't be loaded because the
+  /// device was offline. Drives the in-viewer offline placeholder; entries
+  /// clear automatically when the item loads successfully.
+  Set<int> get offlineItems => throw _privateConstructorUsedError;
+
   /// Create a copy of GalleryState
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -53,7 +58,8 @@ abstract class $GalleryStateCopyWith<$Res> {
       bool isUIVisible,
       bool isInitialized,
       bool isSliding,
-      double textPanelHeight});
+      double textPanelHeight,
+      Set<int> offlineItems});
 }
 
 /// @nodoc
@@ -77,6 +83,7 @@ class _$GalleryStateCopyWithImpl<$Res, $Val extends GalleryState>
     Object? isInitialized = null,
     Object? isSliding = null,
     Object? textPanelHeight = null,
+    Object? offlineItems = null,
   }) {
     return _then(_value.copyWith(
       items: null == items
@@ -103,6 +110,10 @@ class _$GalleryStateCopyWithImpl<$Res, $Val extends GalleryState>
           ? _value.textPanelHeight
           : textPanelHeight // ignore: cast_nullable_to_non_nullable
               as double,
+      offlineItems: null == offlineItems
+          ? _value.offlineItems
+          : offlineItems // ignore: cast_nullable_to_non_nullable
+              as Set<int>,
     ) as $Val);
   }
 }
@@ -121,7 +132,8 @@ abstract class _$$GalleryStateImplCopyWith<$Res>
       bool isUIVisible,
       bool isInitialized,
       bool isSliding,
-      double textPanelHeight});
+      double textPanelHeight,
+      Set<int> offlineItems});
 }
 
 /// @nodoc
@@ -143,6 +155,7 @@ class __$$GalleryStateImplCopyWithImpl<$Res>
     Object? isInitialized = null,
     Object? isSliding = null,
     Object? textPanelHeight = null,
+    Object? offlineItems = null,
   }) {
     return _then(_$GalleryStateImpl(
       items: null == items
@@ -169,6 +182,10 @@ class __$$GalleryStateImplCopyWithImpl<$Res>
           ? _value.textPanelHeight
           : textPanelHeight // ignore: cast_nullable_to_non_nullable
               as double,
+      offlineItems: null == offlineItems
+          ? _value._offlineItems
+          : offlineItems // ignore: cast_nullable_to_non_nullable
+              as Set<int>,
     ));
   }
 }
@@ -182,8 +199,10 @@ class _$GalleryStateImpl extends _GalleryState {
       this.isUIVisible = true,
       this.isInitialized = false,
       this.isSliding = false,
-      this.textPanelHeight = GalleryState.minTextPanelHeight})
+      this.textPanelHeight = GalleryState.minTextPanelHeight,
+      final Set<int> offlineItems = const <int>{}})
       : _items = items,
+        _offlineItems = offlineItems,
         super._();
 
   /// The list of gallery items being displayed.
@@ -223,9 +242,25 @@ class _$GalleryStateImpl extends _GalleryState {
   @JsonKey()
   final double textPanelHeight;
 
+  /// Indexes of items whose remote media couldn't be loaded because the
+  /// device was offline. Drives the in-viewer offline placeholder; entries
+  /// clear automatically when the item loads successfully.
+  final Set<int> _offlineItems;
+
+  /// Indexes of items whose remote media couldn't be loaded because the
+  /// device was offline. Drives the in-viewer offline placeholder; entries
+  /// clear automatically when the item loads successfully.
+  @override
+  @JsonKey()
+  Set<int> get offlineItems {
+    if (_offlineItems is EqualUnmodifiableSetView) return _offlineItems;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableSetView(_offlineItems);
+  }
+
   @override
   String toString() {
-    return 'GalleryState(items: $items, currentIndex: $currentIndex, isUIVisible: $isUIVisible, isInitialized: $isInitialized, isSliding: $isSliding, textPanelHeight: $textPanelHeight)';
+    return 'GalleryState(items: $items, currentIndex: $currentIndex, isUIVisible: $isUIVisible, isInitialized: $isInitialized, isSliding: $isSliding, textPanelHeight: $textPanelHeight, offlineItems: $offlineItems)';
   }
 
   @override
@@ -243,7 +278,9 @@ class _$GalleryStateImpl extends _GalleryState {
             (identical(other.isSliding, isSliding) ||
                 other.isSliding == isSliding) &&
             (identical(other.textPanelHeight, textPanelHeight) ||
-                other.textPanelHeight == textPanelHeight));
+                other.textPanelHeight == textPanelHeight) &&
+            const DeepCollectionEquality()
+                .equals(other._offlineItems, _offlineItems));
   }
 
   @override
@@ -254,7 +291,8 @@ class _$GalleryStateImpl extends _GalleryState {
       isUIVisible,
       isInitialized,
       isSliding,
-      textPanelHeight);
+      textPanelHeight,
+      const DeepCollectionEquality().hash(_offlineItems));
 
   /// Create a copy of GalleryState
   /// with the given fields replaced by the non-null parameter values.
@@ -272,7 +310,8 @@ abstract class _GalleryState extends GalleryState {
       final bool isUIVisible,
       final bool isInitialized,
       final bool isSliding,
-      final double textPanelHeight}) = _$GalleryStateImpl;
+      final double textPanelHeight,
+      final Set<int> offlineItems}) = _$GalleryStateImpl;
   const _GalleryState._() : super._();
 
   /// The list of gallery items being displayed.
@@ -298,6 +337,12 @@ abstract class _GalleryState extends GalleryState {
   /// Current height of the draggable text panel.
   @override
   double get textPanelHeight;
+
+  /// Indexes of items whose remote media couldn't be loaded because the
+  /// device was offline. Drives the in-viewer offline placeholder; entries
+  /// clear automatically when the item loads successfully.
+  @override
+  Set<int> get offlineItems;
 
   /// Create a copy of GalleryState
   /// with the given fields replaced by the non-null parameter values.
