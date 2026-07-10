@@ -11,6 +11,7 @@ import '../models/gallery_theme.dart';
 import 'gallery/deferred_init.dart';
 import 'gallery/dismissible_drag_area.dart';
 import 'gallery/gallery_image_item.dart';
+import 'gallery/gallery_offline_view.dart';
 import 'gallery/zoom_aware_page_view.dart';
 import 'media/gallery_audio_item.dart';
 import 'media/gallery_video_item.dart';
@@ -36,6 +37,7 @@ class GalleryImageViewer extends StatefulWidget {
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
   final void Function(int currentIndex)? onClose;
   final String? noInternetMessage;
+  final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
   /// Cache manager forwarded to network image sources (full-screen images and
@@ -55,6 +57,7 @@ class GalleryImageViewer extends StatefulWidget {
     required this.activeYoutubeNotifier,
     this.onClose,
     this.noInternetMessage,
+    this.offlineBuilder,
     this.theme,
     this.cacheManager,
     this.memCacheWidth,
@@ -360,6 +363,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
           onZoomOut: () => _setUIVisible(context, true),
           cacheManager: widget.cacheManager,
           memCacheWidth: widget.memCacheWidth,
+          offlineBuilder: widget.offlineBuilder,
+          theme: widget.theme,
         );
         content = GestureDetector(
           behavior: HitTestBehavior.translucent,
@@ -376,6 +381,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
             activePlayerNotifier: widget.activePlayerNotifier,
             galleryBloc: bloc,
             noInternetMessage: widget.noInternetMessage,
+            offlineBuilder: widget.offlineBuilder,
             theme: widget.theme,
           ),
         );
@@ -389,6 +395,8 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
             activePlayerNotifier: widget.activePlayerNotifier,
             galleryBloc: bloc,
             noInternetMessage: widget.noInternetMessage,
+            offlineBuilder: widget.offlineBuilder,
+            theme: widget.theme,
             cacheManager: widget.cacheManager,
             memCacheWidth: widget.memCacheWidth,
           ),
@@ -403,6 +411,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
             activeYoutubeNotifier: widget.activeYoutubeNotifier,
             galleryBloc: bloc,
             noInternetMessage: widget.noInternetMessage,
+            offlineBuilder: widget.offlineBuilder,
             theme: widget.theme,
           ),
         );

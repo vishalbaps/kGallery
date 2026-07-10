@@ -49,6 +49,18 @@ class GalleryBloc extends Bloc<GalleryEvent, GalleryState> {
     on<GallerySetSliding>((event, emit) {
       emit(state.copyWith(isSliding: event.isSliding));
     });
+
+    on<GallerySetItemOffline>((event, emit) {
+      final bool alreadyOffline = state.offlineItems.contains(event.index);
+      if (alreadyOffline == event.offline) return;
+      final updated = Set<int>.from(state.offlineItems);
+      if (event.offline) {
+        updated.add(event.index);
+      } else {
+        updated.remove(event.index);
+      }
+      emit(state.copyWith(offlineItems: updated));
+    });
   }
 }
 
@@ -73,6 +85,10 @@ class GalleryState with _$GalleryState {
     @Default(false) bool isSliding,
     /// Current height of the draggable text panel.
     @Default(GalleryState.minTextPanelHeight) double textPanelHeight,
+    /// Indexes of items whose remote media couldn't be loaded because the
+    /// device was offline. Drives the in-viewer offline placeholder; entries
+    /// clear automatically when the item loads successfully.
+    @Default(<int>{}) Set<int> offlineItems,
   }) = _GalleryState;
 }
 
@@ -120,4 +136,16 @@ class GalleryTextPanelHeightChanged extends GalleryEvent {
   final double height;
 
   GalleryTextPanelHeightChanged(this.height);
+}
+
+/// Marks an item (by index) as offline or back online, so the viewer can
+/// show or clear its offline placeholder.
+class GallerySetItemOffline extends GalleryEvent {
+  /// The index of the affected item.
+  final int index;
+
+  /// `true` when the item is offline (blocked), `false` when it can load.
+  final bool offline;
+
+  GallerySetItemOffline({required this.index, required this.offline});
 }

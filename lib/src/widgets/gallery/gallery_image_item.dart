@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../../models/gallery_item.dart';
+import '../../models/gallery_theme.dart';
 import '../../utils/image_source.dart';
+import 'gallery_offline_view.dart';
 import 'zoomable_image.dart';
 
 /// Renders a single image gallery item (network URL or base64 data URI via
@@ -26,6 +28,12 @@ class GalleryImageItem extends StatelessWidget {
   /// Optional in-memory decode width cap forwarded to [CachedNetworkImage].
   final int? memCacheWidth;
 
+  /// Host-supplied placeholder shown when the image can't be loaded.
+  final GalleryOfflineBuilder? offlineBuilder;
+
+  /// Theme used to style the default offline placeholder.
+  final GalleryTheme? theme;
+
   const GalleryImageItem({
     super.key,
     required this.item,
@@ -36,6 +44,8 @@ class GalleryImageItem extends StatelessWidget {
     this.onZoomOut,
     this.cacheManager,
     this.memCacheWidth,
+    this.offlineBuilder,
+    this.theme,
   });
 
   @override
@@ -50,8 +60,10 @@ class GalleryImageItem extends StatelessWidget {
       placeholder: (context, _) =>
           progressWidget ??
           const Center(child: CircularProgressIndicator(color: Colors.white)),
-      errorWidget: (context, _, __) => const Center(
-        child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
+      errorWidget: (context, _, __) => GalleryLoadErrorView(
+        item: item,
+        theme: theme,
+        offlineBuilder: offlineBuilder,
       ),
     );
 
