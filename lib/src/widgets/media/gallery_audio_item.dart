@@ -54,9 +54,6 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
   StreamSubscription? _playingSubscription;
   StreamSubscription? _completedSubscription;
 
-  /// True when the last play attempt was blocked because the device is offline.
-  bool _offline = false;
-
   bool get _currentlyPlaying => _player?.state.playing == true;
 
   @override
@@ -131,22 +128,24 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
     if (p == null) return;
 
     if (!widget.item.url.startsWith('http')) {
-      if (_offline) setState(() => _offline = false);
+      _setOffline(false);
       p.play();
       return;
     }
 
     final online = await ConnectivityService.instance.isConnected();
     if (!mounted || _player != p) return;
-    if (!online) {
-      // Show the offline placeholder; sliding back re-runs this check.
-      if (!_offline) setState(() => _offline = true);
-      return;
-    }
-    if (_offline) setState(() => _offline = false);
+    // Publish the offline state to the bloc; sliding back re-runs this check.
+    _setOffline(!online);
+    if (!online) return;
     if (widget.galleryBloc.state.currentIndex == widget.index) {
       p.play();
     }
+  }
+
+  void _setOffline(bool offline) {
+    widget.galleryBloc
+        .add(GallerySetItemOffline(index: widget.index, offline: offline));
   }
 
   void _togglePlayPause() {
@@ -193,33 +192,39 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
           },
         ),
       ],
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildArtwork(),
-          GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          if (_offline)
-            Positioned.fill(child: _buildOfflineView())
-          else if (_player != null)
-            Center(
-              child: StreamBuilder<bool>(
-                initialData: _player!.state.playing,
-                stream: _player!.stream.playing,
-                builder: (context, snapshot) {
-                  final p = _player;
-                  if (p == null) return const SizedBox.shrink();
-                  return GalleryCenterControls(
-                    isPlaying: snapshot.data ?? false,
-                    isReady: true,
-                    bufferingStream: p.stream.buffering,
-                    initialBuffering: p.state.buffering,
-                    galleryBloc: widget.galleryBloc,
-                    onTap: _togglePlayPause,
-                  );
-                },
-              ),
-            ),
-        ],
+      child: BlocSelector<GalleryBloc, GalleryState, bool>(
+        bloc: widget.galleryBloc,
+        selector: (state) => state.offlineItems.contains(widget.index),
+        builder: (context, isOffline) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildArtwork(),
+              GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
+              if (isOffline)
+                Positioned.fill(child: _buildOfflineView())
+              else if (_player != null)
+                Center(
+                  child: StreamBuilder<bool>(
+                    initialData: _player!.state.playing,
+                    stream: _player!.stream.playing,
+                    builder: (context, snapshot) {
+                      final p = _player;
+                      if (p == null) return const SizedBox.shrink();
+                      return GalleryCenterControls(
+                        isPlaying: snapshot.data ?? false,
+                        isReady: true,
+                        bufferingStream: p.stream.buffering,
+                        initialBuffering: p.state.buffering,
+                        galleryBloc: widget.galleryBloc,
+                        onTap: _togglePlayPause,
+                      );
+                    },
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -231,6 +236,7 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
         item: widget.item,
         theme: widget.theme,
         offlineBuilder: widget.offlineBuilder,
+        knownOffline: true,
       ),
     );
   }

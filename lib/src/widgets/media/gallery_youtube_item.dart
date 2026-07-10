@@ -59,10 +59,6 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
   /// the fullscreen route would render only the static thumbnail.
   final ValueNotifier<bool> _isFullscreen = ValueNotifier<bool>(false);
 
-  /// True when activation was blocked because the device is offline. Guards the
-  /// offline placeholder; cleared on the next activation once back online.
-  bool _offline = false;
-
   /// Prevents re-entrant activation while the async connectivity check runs.
   bool _activating = false;
 
@@ -93,15 +89,18 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
           widget.galleryBloc.state.currentIndex != widget.index) {
         return;
       }
-      if (!online) {
-        if (!_offline) setState(() => _offline = true);
-        return;
-      }
-      if (_offline) setState(() => _offline = false);
+      // Publish offline state to the bloc instead of local setState.
+      _setOffline(!online);
+      if (!online) return;
       _createController();
     } finally {
       _activating = false;
     }
+  }
+
+  void _setOffline(bool offline) {
+    widget.galleryBloc
+        .add(GallerySetItemOffline(index: widget.index, offline: offline));
   }
 
   void _createController() {
@@ -292,48 +291,55 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
           },
         ),
       ],
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildPlayer(),
-          GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          if (_offline)
-            Positioned.fill(child: _buildOfflineView())
-          else ...[
-            // Until the controller exists / the player reports ready, the
-            // WebView paints black — cover it with the loader so a swipe
-            // between videos shows progress instead of a black screen.
-            if (_controller == null)
-              const GalleryMediaLoader()
-            else
-              AnimatedBuilder(
-                animation: _controller!,
-                builder: (context, _) {
-                  final c = _controller;
-                  if (c == null) return const SizedBox.shrink();
-                  final v = c.value;
-                  if (!v.isReady) return const GalleryMediaLoader();
-                  return Center(
-                    child: GalleryCenterControls(
-                      isPlaying: v.isPlaying,
-                      isReady: v.isReady,
-                      bufferingStream: null,
-                      initialBuffering: v.playerState == PlayerState.buffering,
+      child: BlocSelector<GalleryBloc, GalleryState, bool>(
+        bloc: widget.galleryBloc,
+        selector: (state) => state.offlineItems.contains(widget.index),
+        builder: (context, isOffline) {
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildPlayer(),
+              GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
+              if (isOffline)
+                Positioned.fill(child: _buildOfflineView())
+              else ...[
+                // Until the controller exists / the player reports ready, the
+                // WebView paints black — cover it with the loader so a swipe
+                // between videos shows progress instead of a black screen.
+                if (_controller == null)
+                  const GalleryMediaLoader()
+                else
+                  AnimatedBuilder(
+                    animation: _controller!,
+                    builder: (context, _) {
+                      final c = _controller;
+                      if (c == null) return const SizedBox.shrink();
+                      final v = c.value;
+                      if (!v.isReady) return const GalleryMediaLoader();
+                      return Center(
+                        child: GalleryCenterControls(
+                          isPlaying: v.isPlaying,
+                          isReady: v.isReady,
+                          bufferingStream: null,
+                          initialBuffering:
+                              v.playerState == PlayerState.buffering,
+                          galleryBloc: widget.galleryBloc,
+                          onTap: _togglePlayPause,
+                        ),
+                      );
+                    },
+                  ),
+                if (_controller != null)
+                  Positioned.fill(
+                    child: GalleryYoutubeFullscreenButton(
                       galleryBloc: widget.galleryBloc,
-                      onTap: _togglePlayPause,
+                      onTap: _enterFullscreen,
                     ),
-                  );
-                },
-              ),
-            if (_controller != null)
-              Positioned.fill(
-                child: GalleryYoutubeFullscreenButton(
-                  galleryBloc: widget.galleryBloc,
-                  onTap: _enterFullscreen,
-                ),
-              ),
-          ],
-        ],
+                  ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -345,6 +351,7 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
         item: widget.item,
         theme: widget.theme,
         offlineBuilder: widget.offlineBuilder,
+        knownOffline: true,
       ),
     );
   }

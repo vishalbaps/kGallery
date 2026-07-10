@@ -86,47 +86,33 @@ class GalleryOfflineView extends StatelessWidget {
   }
 }
 
-/// Smart wrapper used at every load-failure site in the viewer.
+/// Stateless wrapper used at every load-failure site in the viewer.
 ///
 /// - If the host supplied [offlineBuilder], it is used verbatim.
-/// - Otherwise a [GalleryOfflineView] is rendered, and connectivity is checked
-///   once to distinguish "You're offline" from a genuine load failure while
-///   online ("offline ≠ broken").
-class GalleryLoadErrorView extends StatefulWidget {
+/// - Otherwise a [GalleryOfflineView] is rendered. The "offline vs. broken"
+///   wording is decided by [knownOffline] when the caller already knows the
+///   cause (media items, whose offline state lives in [GalleryBloc]), or by a
+///   one-shot connectivity probe via [FutureBuilder] otherwise (images, whose
+///   failure is surfaced by `CachedNetworkImage`). No local mutable state.
+class GalleryLoadErrorView extends StatelessWidget {
   final GalleryItem item;
   final GalleryTheme? theme;
   final GalleryOfflineBuilder? offlineBuilder;
+
+  /// When non-null, skips the connectivity probe: `true` → offline wording,
+  /// `false` → generic failure wording.
+  final bool? knownOffline;
 
   const GalleryLoadErrorView({
     super.key,
     required this.item,
     this.theme,
     this.offlineBuilder,
+    this.knownOffline,
   });
 
-  @override
-  State<GalleryLoadErrorView> createState() => _GalleryLoadErrorViewState();
-}
-
-class _GalleryLoadErrorViewState extends State<GalleryLoadErrorView> {
-  // Default to offline: the load already failed, and re-checking resolves the
-  // exact wording a moment later. Avoids a "broken" flash before the check.
-  bool _online = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _resolve();
-  }
-
-  Future<void> _resolve() async {
-    final online = await ConnectivityService.instance.isConnected();
-    if (!mounted || online == _online) return;
-    setState(() => _online = online);
-  }
-
   String get _typeLabel {
-    switch (widget.item.type) {
+    switch (item.type) {
       case GalleryItemType.image:
         return 'image';
       case GalleryItemType.audio:
@@ -137,28 +123,43 @@ class _GalleryLoadErrorViewState extends State<GalleryLoadErrorView> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (widget.offlineBuilder != null) {
-      return widget.offlineBuilder!(context, widget.item);
-    }
-
+  Widget _view({required bool offline}) {
     final brightness = ThemeData.estimateBrightnessForColor(
-      widget.theme?.backgroundColor ?? Colors.black,
+      theme?.backgroundColor ?? Colors.black,
     );
 
-    final String title = _online
-        ? "Couldn't load this $_typeLabel"
-        : (widget.theme?.offlineTitle ?? "You're offline");
-    final String subtitle = _online
-        ? 'The $_typeLabel is unavailable right now.'
+    final String title = offline
+        ? (theme?.offlineTitle ?? "You're offline")
         : "Couldn't load this $_typeLabel";
+    final String subtitle = offline
+        ? "Couldn't load this $_typeLabel"
+        : 'The $_typeLabel is unavailable right now.';
 
     return GalleryOfflineView(
       title: title,
       subtitle: subtitle,
       brightness: brightness,
-      icon: _online ? Icons.broken_image_rounded : Icons.wifi_off_rounded,
+      icon: offline ? Icons.wifi_off_rounded : Icons.broken_image_rounded,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (offlineBuilder != null) {
+      return offlineBuilder!(context, item);
+    }
+    if (knownOffline != null) {
+      return _view(offline: knownOffline!);
+    }
+    // Image path: probe connectivity once to pick the wording. While the probe
+    // is in flight, assume offline (the common cause) to avoid a "broken" flash.
+    return FutureBuilder<bool>(
+      future: ConnectivityService.instance.isConnected(),
+      builder: (context, snapshot) {
+        final bool online = snapshot.connectionState == ConnectionState.done &&
+            (snapshot.data ?? false);
+        return _view(offline: !online);
+      },
     );
   }
 }
