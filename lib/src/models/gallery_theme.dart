@@ -16,6 +16,13 @@ class GalleryTheme {
   /// The message shown when a network error occurs (e.g., no internet).
   final String noInternetMessage;
 
+  /// The headline shown in the default offline / load-failure placeholder
+  /// inside the viewer. Defaults to `"You're offline"`.
+  ///
+  /// Only used by kGallery's built-in placeholder ([GalleryOfflineView]);
+  /// ignored when a custom `KGallery.offlineBuilder` is supplied.
+  final String offlineTitle;
+
   /// The color of the active seekbar.
   /// Defaults to [Colors.white].
   final Color seekbarActiveColor;
@@ -46,6 +53,7 @@ class GalleryTheme {
     this.backgroundColor = Colors.black,
     this.appBarColor = const Color(0x80000000),
     this.noInternetMessage = 'No internet connection. Please check your network.',
+    this.offlineTitle = "You're offline",
     this.seekbarActiveColor = Colors.white,
     this.seekbarInactiveColor = Colors.white30,
     this.titleTextStyle,

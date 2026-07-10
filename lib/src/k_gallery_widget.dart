@@ -11,6 +11,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'bloc/gallery_bloc.dart';
 import 'models/gallery_item.dart';
 import 'models/gallery_theme.dart';
+import 'widgets/gallery/gallery_offline_view.dart';
 import 'widgets/gallery_image_viewer.dart';
 import 'widgets/gallery_thumbnail_strip.dart';
 
@@ -63,6 +64,16 @@ class KGallery extends StatefulWidget {
 
   /// Custom message shown when no internet is detected for remote media.
   final String? noInternetMessage;
+
+  /// Builds a custom placeholder shown inside the viewer when a remote item
+  /// (image, video, audio, or YouTube) cannot be loaded — e.g. when offline.
+  ///
+  /// When `null`, kGallery shows its own default placeholder
+  /// ([GalleryOfflineView]) with an icon, title, and subtitle that adapts to
+  /// the gallery background (dark or light). Provide this to render your own
+  /// UI instead. No retry action is shown; the item reloads automatically when
+  /// the user slides back to it.
+  final GalleryOfflineBuilder? offlineBuilder;
 
   /// Called when the currently displayed item changes.
   final void Function(int index)? onIndexChanged;
@@ -118,6 +129,7 @@ class KGallery extends StatefulWidget {
     this.leading,
     this.title,
     this.noInternetMessage,
+    this.offlineBuilder,
     this.onIndexChanged,
     this.onClose,
     this.theme,
@@ -177,6 +189,7 @@ class KGallery extends StatefulWidget {
     Widget? leading,
     String? title,
     String? noInternetMessage,
+    GalleryOfflineBuilder? offlineBuilder,
     void Function(int index)? onIndexChanged,
     void Function(int currentIndex)? onClose,
     GalleryTheme? theme,
@@ -208,6 +221,7 @@ class KGallery extends StatefulWidget {
             leading: leading,
             title: title,
             noInternetMessage: noInternetMessage,
+            offlineBuilder: offlineBuilder,
             onIndexChanged: onIndexChanged,
             onClose: onClose,
             theme: theme,
@@ -329,6 +343,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                             onClose: widget.onClose,
                             noInternetMessage: widget.noInternetMessage ??
                                 _effectiveTheme.noInternetMessage,
+                            offlineBuilder: widget.offlineBuilder,
                             theme: _effectiveTheme,
                             cacheManager: widget.cacheManager,
                             memCacheWidth: widget.memCacheWidth,

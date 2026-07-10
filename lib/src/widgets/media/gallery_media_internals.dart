@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
@@ -34,29 +33,6 @@ mixin GalleryUIHideMixin<T extends StatefulWidget> on State<T> {
     _hideUITimer?.cancel();
     _hideUITimer = null;
   }
-}
-
-/// Checks connectivity and shows a "no internet" SnackBar if offline.
-/// Returns `true` when online, `false` when offline.
-Future<bool> mediaConnectivityCheck(
-  BuildContext context, {
-  String? noInternetMessage,
-}) async {
-  final results = await Connectivity().checkConnectivity();
-  if (!context.mounted) return false;
-  if (results.contains(ConnectivityResult.none)) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          noInternetMessage ?? 'No internet connection. Please check your network.',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
-    return false;
-  }
-  return true;
 }
 
 /// Center play/pause button + buffering indicator.

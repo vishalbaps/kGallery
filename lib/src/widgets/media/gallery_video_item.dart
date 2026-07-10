@@ -8,6 +8,8 @@ import 'package:media_kit_video/media_kit_video.dart';
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
+import '../../utils/connectivity_service.dart';
+import '../gallery/gallery_offline_view.dart';
 import 'gallery_media_internals.dart';
 
 /// Internal widget rendering a single media_kit video item inside the
@@ -19,6 +21,7 @@ class GalleryVideoItem extends StatefulWidget {
   final ValueNotifier<Player?> activePlayerNotifier;
   final GalleryBloc galleryBloc;
   final String? noInternetMessage;
+  final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
   const GalleryVideoItem({
@@ -28,6 +31,7 @@ class GalleryVideoItem extends StatefulWidget {
     required this.activePlayerNotifier,
     required this.galleryBloc,
     this.noInternetMessage,
+    this.offlineBuilder,
     this.theme,
   });
 
@@ -41,6 +45,11 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
   final GlobalKey<VideoState> _videoKey = GlobalKey<VideoState>();
   StreamSubscription? _playingSubscription;
   StreamSubscription? _completedSubscription;
+
+  /// True when the last play attempt was blocked because the device is offline.
+  /// Drives the offline placeholder; cleared automatically on the next
+  /// successful activation (e.g. when the user slides back after reconnecting).
+  bool _offline = false;
 
   bool get _currentlyPlaying => _player?.state.playing == true;
 
@@ -120,16 +129,21 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
     if (p == null) return;
 
     if (!widget.item.url.startsWith('http')) {
+      if (_offline) setState(() => _offline = false);
       p.play();
       return;
     }
 
-    final online = await mediaConnectivityCheck(
-      context,
-      noInternetMessage: widget.noInternetMessage,
-    );
-    if (!online) return;
-    if (mounted && _player == p && widget.galleryBloc.state.currentIndex == widget.index) {
+    final online = await ConnectivityService.instance.isConnected();
+    if (!mounted || _player != p) return;
+    if (!online) {
+      // Show the offline placeholder instead of a transient SnackBar. No retry
+      // button: sliding back to this item re-runs _activate → this check.
+      if (!_offline) setState(() => _offline = true);
+      return;
+    }
+    if (_offline) setState(() => _offline = false);
+    if (widget.galleryBloc.state.currentIndex == widget.index) {
       p.play();
     }
   }
@@ -193,47 +207,62 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
           // slide gestures) so they don't repaint together.
           RepaintBoundary(child: _buildVideo()),
           GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          // Until the controller exists / the first frame is painted, the
-          // Video texture is black — cover it with the loader so a swipe
-          // between videos shows progress instead of a black screen.
-          // `rect` flips from null → non-null exactly when the first frame
-          // renders, so we read it directly instead of mirroring it in state.
-          if (_videoController == null)
-            const GalleryMediaLoader()
-          else
-            ValueListenableBuilder<Rect?>(
-              valueListenable: _videoController!.rect,
-              builder: (context, rect, _) {
-                if (rect == null) return const GalleryMediaLoader();
-                final p = _player;
-                if (p == null) return const SizedBox.shrink();
-                return Center(
-                  child: StreamBuilder<bool>(
-                    initialData: p.state.playing,
-                    stream: p.stream.playing,
-                    builder: (context, snapshot) {
-                      return GalleryCenterControls(
-                        isPlaying: snapshot.data ?? false,
-                        isReady: true,
-                        bufferingStream: p.stream.buffering,
-                        initialBuffering: p.state.buffering,
-                        galleryBloc: widget.galleryBloc,
-                        onTap: _togglePlayPause,
-                      );
-                    },
-                  ),
-                );
-              },
-            ),
-          if (_player != null)
-            Positioned.fill(
-              child: GalleryMediaKitFullscreenButton(
-                player: _player!,
-                galleryBloc: widget.galleryBloc,
-                onTap: _enterFullscreen,
+          if (_offline)
+            Positioned.fill(child: _buildOfflineView())
+          else ...[
+            // Until the controller exists / the first frame is painted, the
+            // Video texture is black — cover it with the loader so a swipe
+            // between videos shows progress instead of a black screen.
+            // `rect` flips from null → non-null exactly when the first frame
+            // renders, so we read it directly instead of mirroring it in state.
+            if (_videoController == null)
+              const GalleryMediaLoader()
+            else
+              ValueListenableBuilder<Rect?>(
+                valueListenable: _videoController!.rect,
+                builder: (context, rect, _) {
+                  if (rect == null) return const GalleryMediaLoader();
+                  final p = _player;
+                  if (p == null) return const SizedBox.shrink();
+                  return Center(
+                    child: StreamBuilder<bool>(
+                      initialData: p.state.playing,
+                      stream: p.stream.playing,
+                      builder: (context, snapshot) {
+                        return GalleryCenterControls(
+                          isPlaying: snapshot.data ?? false,
+                          isReady: true,
+                          bufferingStream: p.stream.buffering,
+                          initialBuffering: p.state.buffering,
+                          galleryBloc: widget.galleryBloc,
+                          onTap: _togglePlayPause,
+                        );
+                      },
+                    ),
+                  );
+                },
               ),
-            ),
+            if (_player != null)
+              Positioned.fill(
+                child: GalleryMediaKitFullscreenButton(
+                  player: _player!,
+                  galleryBloc: widget.galleryBloc,
+                  onTap: _enterFullscreen,
+                ),
+              ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineView() {
+    return ColoredBox(
+      color: widget.theme?.backgroundColor ?? Colors.black,
+      child: GalleryLoadErrorView(
+        item: widget.item,
+        theme: widget.theme,
+        offlineBuilder: widget.offlineBuilder,
       ),
     );
   }

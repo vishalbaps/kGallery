@@ -1,11 +1,16 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
+
 import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
+import '../../models/gallery_theme.dart';
+import '../../utils/connectivity_service.dart';
 import '../../utils/image_source.dart';
+import '../gallery/gallery_offline_view.dart';
 import 'gallery_media_internals.dart';
 
 /// Internal widget rendering a single media_kit audio item. Reuses the
@@ -18,6 +23,8 @@ class GalleryAudioItem extends StatefulWidget {
   final ValueNotifier<Player?> activePlayerNotifier;
   final GalleryBloc galleryBloc;
   final String? noInternetMessage;
+  final GalleryOfflineBuilder? offlineBuilder;
+  final GalleryTheme? theme;
 
   /// Cache manager forwarded to the artwork's [CachedNetworkImage].
   final BaseCacheManager? cacheManager;
@@ -32,6 +39,8 @@ class GalleryAudioItem extends StatefulWidget {
     required this.activePlayerNotifier,
     required this.galleryBloc,
     this.noInternetMessage,
+    this.offlineBuilder,
+    this.theme,
     this.cacheManager,
     this.memCacheWidth,
   });
@@ -40,11 +49,13 @@ class GalleryAudioItem extends StatefulWidget {
   State<GalleryAudioItem> createState() => _GalleryAudioItemState();
 }
 
-class _GalleryAudioItemState extends State<GalleryAudioItem>
-    with GalleryUIHideMixin<GalleryAudioItem> {
+class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideMixin<GalleryAudioItem> {
   Player? _player;
   StreamSubscription? _playingSubscription;
   StreamSubscription? _completedSubscription;
+
+  /// True when the last play attempt was blocked because the device is offline.
+  bool _offline = false;
 
   bool get _currentlyPlaying => _player?.state.playing == true;
 
@@ -66,9 +77,7 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
     _playingSubscription = p.stream.playing.listen((isPlaying) {
       if (!mounted) return;
       final state = widget.galleryBloc.state;
-      if (isPlaying &&
-          state.isUIVisible &&
-          state.currentIndex == widget.index) {
+      if (isPlaying && state.isUIVisible && state.currentIndex == widget.index) {
         startHideUITimer(widget.galleryBloc, widget.index);
       } else {
         cancelHideUITimer();
@@ -122,18 +131,20 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
     if (p == null) return;
 
     if (!widget.item.url.startsWith('http')) {
+      if (_offline) setState(() => _offline = false);
       p.play();
       return;
     }
 
-    final online = await mediaConnectivityCheck(
-      context,
-      noInternetMessage: widget.noInternetMessage,
-    );
-    if (!online) return;
-    if (mounted &&
-        _player == p &&
-        widget.galleryBloc.state.currentIndex == widget.index) {
+    final online = await ConnectivityService.instance.isConnected();
+    if (!mounted || _player != p) return;
+    if (!online) {
+      // Show the offline placeholder; sliding back re-runs this check.
+      if (!_offline) setState(() => _offline = true);
+      return;
+    }
+    if (_offline) setState(() => _offline = false);
+    if (widget.galleryBloc.state.currentIndex == widget.index) {
       p.play();
     }
   }
@@ -187,7 +198,9 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
         children: [
           _buildArtwork(),
           GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
-          if (_player != null)
+          if (_offline)
+            Positioned.fill(child: _buildOfflineView())
+          else if (_player != null)
             Center(
               child: StreamBuilder<bool>(
                 initialData: _player!.state.playing,
@@ -207,6 +220,17 @@ class _GalleryAudioItemState extends State<GalleryAudioItem>
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineView() {
+    return ColoredBox(
+      color: widget.theme?.backgroundColor ?? Colors.black,
+      child: GalleryLoadErrorView(
+        item: widget.item,
+        theme: widget.theme,
+        offlineBuilder: widget.offlineBuilder,
       ),
     );
   }
