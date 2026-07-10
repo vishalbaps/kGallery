@@ -63,7 +63,8 @@ kGallery/
 
 ### `KGallery` (main widget)
 - **Required**: `List<GalleryItem> contentList`, `int initialIndex`
-- **Optional**: `progressWidget`, `thumbProgressWidget`, `enableZoom` (true), `enableSwipeToDismiss` (true), `enableHapticFeedback` (true), `leading`, `title`, `noInternetMessage`, `onIndexChanged(int)`, `onClose(int)`, `theme`, `actionMenuBuilder(BuildContext, int, List<GalleryItem>)`, `cacheManager` (`BaseCacheManager?`), `memCacheWidth` (`int?`)
+- **Optional**: `progressWidget`, `thumbProgressWidget`, `enableZoom` (true), `enableSwipeToDismiss` (true), `enableHapticFeedback` (true), `leading`, `title`, `noInternetMessage`, `offlineBuilder` (`GalleryOfflineBuilder?`), `onIndexChanged(int)`, `onClose(int)`, `theme`, `actionMenuBuilder(BuildContext, int, List<GalleryItem>)`, `cacheManager` (`BaseCacheManager?`), `memCacheWidth` (`int?`)
+- **Offline placeholder**: When a remote item (image/video/audio/YouTube) can't load while offline, the viewer shows `GalleryOfflineView` (icon + title + subtitle, adapts to dark/light background) — or a custom widget via `offlineBuilder`. No retry button; the item reloads automatically when revisited after connectivity returns. Backed by `ConnectivityService` (singleton over `connectivity_plus`, `lib/src/utils/connectivity_service.dart`) and BLoC `offlineItems` state. `ConnectivityService`, `GalleryOfflineView`, and the `GalleryOfflineBuilder` typedef are re-exported from `lib/k_gallery.dart`.
 - **Network image caching**: `cacheManager` is forwarded to `CachedNetworkImage` for all network images (full-screen viewer, thumbnail strip, audio artwork). `memCacheWidth` caps the in-memory bitmap width for full-screen images only; thumbnails use a fixed 320px decode cap (`cacheWidth` for base64, `memCacheWidth` for network). `BaseCacheManager`/`CacheManager`/`Config`/`DefaultCacheManager` are re-exported from `lib/k_gallery.dart`. Plumbing: `KGallery` → `GalleryImageViewer` → `GalleryImageItem`/`GalleryAudioItem` and `KGallery` → `GalleryThumbnailStrip`, all bottoming out in `galleryImage()` in `lib/src/utils/image_source.dart`.
 - **Static**: `KGallery.ensureInitialized()` — must call before `runApp()` for media_kit
 - **Static**: `KGallery.show(context, {contentList, initialIndex, ...})` → `Future<int?>` — recommended entry point. Pushes a **non-opaque** `PageRouteBuilder` (`opaque: false`, transparent barrier, fade transition) wrapping `KGallery`, so the screen behind stays visible through the background fade during swipe-to-dismiss. Mirrors the constructor's params; returns the last-viewed index. Does NOT inject `onClose` (the default `Navigator.maybePop(currentIndex)` path returns the index; injecting one would double-pop via `PopScope`).
@@ -76,7 +77,7 @@ kGallery/
 - `image`, `video`, `audio`
 
 ### `GalleryTheme`
-- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`, `noInternetMessage`
+- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`, `noInternetMessage`, `offlineTitle` ("You're offline")
 - Factory: `GalleryTheme.dark()`
 
 ---
@@ -91,6 +92,7 @@ isUIVisible: bool            // default true
 isInitialized: bool          // default false
 isSliding: bool              // default false
 textPanelHeight: double      // default 70.0
+offlineItems: Set<int>       // default {} — indexes whose remote media failed to load offline
 static const minTextPanelHeight = 70.0
 ```
 
@@ -100,6 +102,7 @@ static const minTextPanelHeight = 70.0
 - `GalleryToggleUI(isVisible?)` → flip or set isUIVisible
 - `GallerySetSliding(isSliding)` → track gesture state
 - `GalleryTextPanelHeightChanged(height)` → draggable panel height
+- `GallerySetItemOffline(index, offline)` → add/remove index in `offlineItems` (drives offline placeholder)
 
 ---
 

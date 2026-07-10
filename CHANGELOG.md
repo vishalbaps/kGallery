@@ -1,3 +1,11 @@
+## 1.1.3
+
+- **New**: In-viewer **offline / load-failure placeholder**. When a remote item (image, video, audio, or YouTube) can't load because the device is offline, the viewer now shows a built-in placeholder (`GalleryOfflineView`) — an icon, title, and subtitle that adapt to the gallery background (dark or light) — instead of a blank or broken frame. The item reloads automatically when the user slides back to it after connectivity returns (no retry button).
+- **New**: `offlineBuilder` parameter on `KGallery` / `KGallery.show(...)` to render your own offline placeholder instead of the default.
+- **New**: `GalleryTheme.offlineTitle` (default `"You're offline"`) customizes the default placeholder's headline.
+- **New**: `ConnectivityService` — a shared singleton wrapping `connectivity_plus` with `isConnected()` and an `onConnectivityChanged` stream — is now exported from `package:k_gallery`, along with `GalleryOfflineView` and the `GalleryOfflineBuilder` typedef.
+- **Refactor**: Media items (video, audio, YouTube) now track offline state through the BLoC (new `GallerySetItemOffline` event + `offlineItems` state) instead of local `setState`, so the placeholder stays in sync across rebuilds and clears automatically on a successful load.
+
 ## 1.1.2
 
 - **New**: Drag-to-dismiss now works in **both directions** — swipe up *or* down to close the gallery. The upward threshold is intentionally smaller (90px vs the 150px downward threshold) for an easy one-handed upward flick, and the image flies off the matching edge (top or bottom) before the route pops. Applies to both zoomed and unzoomed images.
