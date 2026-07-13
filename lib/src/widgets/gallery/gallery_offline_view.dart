@@ -10,9 +10,9 @@ import '../../utils/connectivity_service.dart';
 /// Provide one via `KGallery.offlineBuilder` to fully replace kGallery's
 /// default UI ([GalleryOfflineView]).
 typedef GalleryOfflineBuilder = Widget Function(
-  BuildContext context,
-  GalleryItem item,
-);
+    BuildContext context,
+    GalleryItem item,
+    );
 
 /// Default, purely-presentational placeholder: an icon, a title, and a
 /// subtitle. No retry button — the item reloads on its own when the user
@@ -49,7 +49,7 @@ class GalleryOfflineView extends StatelessWidget {
     final Color muted = onDark ? Colors.white70 : Colors.black54;
     final Color iconColor = onDark ? Colors.white70 : Colors.black45;
     final Color iconBg =
-        onDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05);
+    onDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05);
 
     return Center(
       child: Padding(
@@ -128,9 +128,8 @@ class GalleryLoadErrorView extends StatelessWidget {
       theme?.backgroundColor ?? Colors.black,
     );
 
-    final String title = offline
-        ? (theme?.offlineTitle ?? "You're offline")
-        : "Couldn't load this $_typeLabel";
+    final String title =
+    offline ? "You're offline" : "Couldn't load this $_typeLabel";
     final String subtitle = offline
         ? "Couldn't load this $_typeLabel"
         : 'The $_typeLabel is unavailable right now.';

@@ -62,9 +62,6 @@ class KGallery extends StatefulWidget {
   /// Defaults to `"currentIndex / totalCount"` format.
   final String? title;
 
-  /// Custom message shown when no internet is detected for remote media.
-  final String? noInternetMessage;
-
   /// Builds a custom placeholder shown inside the viewer when a remote item
   /// (image, video, audio, or YouTube) cannot be loaded — e.g. when offline.
   ///
@@ -91,10 +88,10 @@ class KGallery extends StatefulWidget {
   /// Builder for custom action widgets in the top bar.
   /// Receives the current context, index, and full items list.
   final Widget Function(
-    BuildContext,
-    int currentIndex,
-    List<GalleryItem> items,
-  )? actionMenuBuilder;
+      BuildContext,
+      int currentIndex,
+      List<GalleryItem> items,
+      )? actionMenuBuilder;
 
   /// Cache manager used for network images (full-screen viewer, thumbnail
   /// strip, and audio artwork).
@@ -128,7 +125,6 @@ class KGallery extends StatefulWidget {
     this.enableHapticFeedback = true,
     this.leading,
     this.title,
-    this.noInternetMessage,
     this.offlineBuilder,
     this.onIndexChanged,
     this.onClose,
@@ -136,10 +132,11 @@ class KGallery extends StatefulWidget {
     this.actionMenuBuilder,
     this.cacheManager,
     this.memCacheWidth,
-  })  : assert(contentList.length > 0, 'contentList must not be empty'),
+  })
+      : assert(contentList.length > 0, 'contentList must not be empty'),
         assert(
-          initialIndex >= 0 && initialIndex < contentList.length,
-          'initialIndex must be within contentList bounds',
+        initialIndex >= 0 && initialIndex < contentList.length,
+        'initialIndex must be within contentList bounds',
         );
 
   /// Initializes MediaKit for video/audio playback.
@@ -177,8 +174,7 @@ class KGallery extends StatefulWidget {
   ///   initialIndex: tappedIndex,
   /// );
   /// ```
-  static Future<int?> show(
-    BuildContext context, {
+  static Future<int?> show(BuildContext context, {
     required List<GalleryItem> contentList,
     required int initialIndex,
     Widget? progressWidget,
@@ -188,48 +184,49 @@ class KGallery extends StatefulWidget {
     bool enableHapticFeedback = true,
     Widget? leading,
     String? title,
-    String? noInternetMessage,
     GalleryOfflineBuilder? offlineBuilder,
     void Function(int index)? onIndexChanged,
     void Function(int currentIndex)? onClose,
     GalleryTheme? theme,
     Widget Function(
-      BuildContext,
-      int currentIndex,
-      List<GalleryItem> items,
-    )? actionMenuBuilder,
+        BuildContext,
+        int currentIndex,
+        List<GalleryItem> items,
+        )? actionMenuBuilder,
     BaseCacheManager? cacheManager,
     int? memCacheWidth,
     Duration transitionDuration = const Duration(milliseconds: 250),
   }) {
     return Navigator.of(context).push<int>(
       PageRouteBuilder<int>(
-        opaque: false, // keep the screen behind painted (see-through dismiss)
-        barrierColor: Colors.transparent, // no scrim over the screen behind
+        opaque: false,
+        // keep the screen behind painted (see-through dismiss)
+        barrierColor: Colors.transparent,
+        // no scrim over the screen behind
         transitionDuration: transitionDuration,
         reverseTransitionDuration: transitionDuration,
-        pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
-          opacity: animation,
-          child: KGallery(
-            contentList: contentList,
-            initialIndex: initialIndex,
-            progressWidget: progressWidget,
-            thumbProgressWidget: thumbProgressWidget,
-            enableZoom: enableZoom,
-            enableSwipeToDismiss: enableSwipeToDismiss,
-            enableHapticFeedback: enableHapticFeedback,
-            leading: leading,
-            title: title,
-            noInternetMessage: noInternetMessage,
-            offlineBuilder: offlineBuilder,
-            onIndexChanged: onIndexChanged,
-            onClose: onClose,
-            theme: theme,
-            actionMenuBuilder: actionMenuBuilder,
-            cacheManager: cacheManager,
-            memCacheWidth: memCacheWidth,
-          ),
-        ),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            FadeTransition(
+              opacity: animation,
+              child: KGallery(
+                contentList: contentList,
+                initialIndex: initialIndex,
+                progressWidget: progressWidget,
+                thumbProgressWidget: thumbProgressWidget,
+                enableZoom: enableZoom,
+                enableSwipeToDismiss: enableSwipeToDismiss,
+                enableHapticFeedback: enableHapticFeedback,
+                leading: leading,
+                title: title,
+                offlineBuilder: offlineBuilder,
+                onIndexChanged: onIndexChanged,
+                onClose: onClose,
+                theme: theme,
+                actionMenuBuilder: actionMenuBuilder,
+                cacheManager: cacheManager,
+                memCacheWidth: memCacheWidth,
+              ),
+            ),
       ),
     );
   }
@@ -244,7 +241,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   final GlobalKey _textContentKey = GlobalKey();
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier =
-      ValueNotifier(null);
+  ValueNotifier(null);
 
   late final Widget _effectiveProgressWidget;
   late final Widget _effectiveThumbProgressWidget;
@@ -294,7 +291,10 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+        final bool isTablet = MediaQuery
+            .of(context)
+            .size
+            .shortestSide >= 600;
         final double thumbnailStripHeight = isTablet ? 110 : 90;
         final double topBarHeight = isTablet ? 80 : 56;
         final double horizontalPadding = isTablet ? 32 : 16;
@@ -324,7 +324,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                   value: _galleryBloc,
                   child: BlocListener<GalleryBloc, GalleryState>(
                     listenWhen: (previous, current) =>
-                        previous.currentIndex != current.currentIndex,
+                    previous.currentIndex != current.currentIndex,
                     listener: (context, state) {
                       widget.onIndexChanged?.call(state.currentIndex);
                     },
@@ -341,8 +341,6 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                             activePlayerNotifier: activePlayerNotifier,
                             activeYoutubeNotifier: activeYoutubeNotifier,
                             onClose: widget.onClose,
-                            noInternetMessage: widget.noInternetMessage ??
-                                _effectiveTheme.noInternetMessage,
                             offlineBuilder: widget.offlineBuilder,
                             theme: _effectiveTheme,
                             cacheManager: widget.cacheManager,
@@ -401,9 +399,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   /// WebView while it is still mounted. Without this, iPadOS keeps the
   /// underlying WKWebView's audio session playing after the route (and the
   /// WebView) is torn down, so the video keeps playing in the background.
-  Future<void> _dismissAfterSilencingYoutube(
-    YoutubePlayerController? youtubeController,
-  ) async {
+  Future<void> _dismissAfterSilencingYoutube(YoutubePlayerController? youtubeController,) async {
     youtubeController?.pause();
     youtubeController?.mute();
     await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -441,7 +437,7 @@ class _GalleryTopBar extends StatelessWidget {
   final Widget? leading;
   final String? title;
   final Widget Function(BuildContext, int, List<GalleryItem>)?
-      actionMenuBuilder;
+  actionMenuBuilder;
   final void Function(int)? onClose;
   final GalleryTheme theme;
 
@@ -457,7 +453,10 @@ class _GalleryTopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final bool isTablet = MediaQuery
+        .of(context)
+        .size
+        .shortestSide >= 600;
 
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
@@ -489,16 +488,22 @@ class _GalleryTopBar extends StatelessWidget {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           top:
-              (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
+          (state.isUIVisible && !state.isSliding) ? 0 : -topBarHeight - 100,
           left: 0,
           right: 0,
           child: ClipRect(
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
-                height: topBarHeight + MediaQuery.of(context).padding.top,
+                height: topBarHeight + MediaQuery
+                    .of(context)
+                    .padding
+                    .top,
                 padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top,
+                  top: MediaQuery
+                      .of(context)
+                      .padding
+                      .top,
                   left: horizontalPadding,
                   right: horizontalPadding,
                 ),
@@ -553,7 +558,7 @@ class _GalleryOverlayLayer extends StatelessWidget {
     return BlocBuilder<GalleryBloc, GalleryState>(
       builder: (context, state) {
         final currentItem =
-            state.items.isNotEmpty ? state.items[state.currentIndex] : null;
+        state.items.isNotEmpty ? state.items[state.currentIndex] : null;
         if (currentItem == null) return const SizedBox.shrink();
 
         final bool hasSeekbar = currentItem.type == GalleryItemType.video ||
@@ -589,17 +594,18 @@ class _GalleryOverlayLayer extends StatelessWidget {
     );
   }
 
-  Widget _buildTextOverlay(
-    BuildContext context,
-    GalleryState state,
-    GalleryItem currentItem,
-    bool showSeekbar,
-    double seekbarHeight,
-  ) {
+  Widget _buildTextOverlay(BuildContext context,
+      GalleryState state,
+      GalleryItem currentItem,
+      bool showSeekbar,
+      double seekbarHeight,) {
     final double textBottomOffset = (state.isUIVisible && !state.isSliding)
-        ? MediaQuery.of(context).padding.bottom +
-            thumbnailStripHeight +
-            (showSeekbar ? seekbarHeight : 0.0)
+        ? MediaQuery
+        .of(context)
+        .padding
+        .bottom +
+        thumbnailStripHeight +
+        (showSeekbar ? seekbarHeight : 0.0)
         : -500;
 
     return Stack(
@@ -652,20 +658,29 @@ class _GalleryTextPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final bool isTablet = MediaQuery
+        .of(context)
+        .size
+        .shortestSide >= 600;
 
     return GestureDetector(
       onVerticalDragUpdate: (details) {
         double newHeight = textPanelHeight - (details.primaryDelta ?? 0);
         final double maxAvailableHeight = constraints.maxHeight -
-            MediaQuery.of(context).padding.top -
+            MediaQuery
+                .of(context)
+                .padding
+                .top -
             topBarHeight -
-            MediaQuery.of(context).padding.bottom -
+            MediaQuery
+                .of(context)
+                .padding
+                .bottom -
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
         final renderBox =
-            textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
@@ -679,20 +694,26 @@ class _GalleryTextPanel extends StatelessWidget {
           clampedMax,
         );
         context.read<GalleryBloc>().add(
-              GalleryTextPanelHeightChanged(newHeight),
-            );
+          GalleryTextPanelHeightChanged(newHeight),
+        );
       },
       onVerticalDragEnd: (details) {
         final double velocity = details.primaryVelocity ?? 0;
         final double maxAvailableHeight = constraints.maxHeight -
-            MediaQuery.of(context).padding.top -
+            MediaQuery
+                .of(context)
+                .padding
+                .top -
             topBarHeight -
-            MediaQuery.of(context).padding.bottom -
+            MediaQuery
+                .of(context)
+                .padding
+                .bottom -
             thumbnailStripHeight;
 
         double contentHeight = maxAvailableHeight;
         final renderBox =
-            textContentKey.currentContext?.findRenderObject() as RenderBox?;
+        textContentKey.currentContext?.findRenderObject() as RenderBox?;
         if (renderBox != null) {
           contentHeight = renderBox.size.height + 10;
         }
