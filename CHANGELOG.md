@@ -1,3 +1,8 @@
+## 1.1.4
+
+- **Fix**: The thumbnail strip and top bar now honor `GalleryTheme.appBarColor` instead of a hardcoded semi-transparent black with a backdrop blur. With a light or custom `appBarColor` the strip previously stayed dark (the hardcoded black tint showed through); it now renders the configured color exactly, fixing the light-mode background.
+- **Docs**: README refreshed for the offline placeholder and bidirectional swipe-to-dismiss, updated the `GalleryTheme` field table, and bumped the install snippet to `^1.1.4`.
+
 ## 1.1.3
 
 - **New**: In-viewer **offline / load-failure placeholder**. When a remote item (image, video, audio, or YouTube) can't load because the device is offline, the viewer now shows a built-in placeholder (`GalleryOfflineView`) — an icon, title, and subtitle that adapt to the gallery background (dark or light) — instead of a blank or broken frame. The item reloads automatically when the user slides back to it after connectivity returns (no retry button).

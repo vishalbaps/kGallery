@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:k_gallery/k_gallery.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+
 import '../bloc/gallery_bloc.dart';
 import '../utils/image_source.dart';
 
@@ -153,166 +153,166 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                   right: 0,
                   height: totalHeight,
                   child: ClipRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.6),
-                        ),
-                        child: Column(
-                          children: [
-                            if (showSeekbar)
-                              SizedBox(
-                                height: seekbarHeight,
-                                child: ytController != null
-                                    ? _buildYoutubeSeekbar(
-                                        ytController, widget.theme)
-                                    : _buildSeekbar(player!, widget.theme),
-                              ),
-                        Expanded(
-                          child: Padding(
-                            padding: EdgeInsets.only(bottom: bottomPadding),
-                            child: NotificationListener<ScrollNotification>(
-                              onNotification: (notification) {
-                                if (notification is ScrollStartNotification &&
-                                    notification.dragDetails != null) {
-                                  _isUserDragging = true;
-                                } else if (notification
-                                    is ScrollEndNotification) {
-                                  _isUserDragging = false;
-                                  _scrollToThumbnail(state.currentIndex,
-                                      animate: true);
-                                } else if (notification
-                                        is ScrollUpdateNotification &&
-                                    _isUserDragging) {
-                                  final double itemFullWidth =
-                                      dimensions.unselectedSize +
-                                          dimensions.spacing;
-                                  int centerIndex =
-                                      (notification.metrics.pixels /
-                                              itemFullWidth)
-                                          .round();
-                                  if (centerIndex >= 0 &&
-                                      centerIndex < state.items.length) {
-                                    if (_lastHapticIndex != centerIndex) {
-                                      _lastHapticIndex = centerIndex;
-                                      if (widget.enableHapticFeedback) {
-                                        HapticFeedback.selectionClick();
+                    child: Container(
+                      decoration:
+                          BoxDecoration(color: widget.theme.appBarColor),
+                      child: Column(
+                        children: [
+                          if (showSeekbar)
+                            SizedBox(
+                              height: seekbarHeight,
+                              child: ytController != null
+                                  ? _buildYoutubeSeekbar(
+                                      ytController, widget.theme)
+                                  : _buildSeekbar(player!, widget.theme),
+                            ),
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(bottom: bottomPadding),
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: (notification) {
+                                  if (notification is ScrollStartNotification &&
+                                      notification.dragDetails != null) {
+                                    _isUserDragging = true;
+                                  } else if (notification
+                                      is ScrollEndNotification) {
+                                    _isUserDragging = false;
+                                    _scrollToThumbnail(state.currentIndex,
+                                        animate: true);
+                                  } else if (notification
+                                          is ScrollUpdateNotification &&
+                                      _isUserDragging) {
+                                    final double itemFullWidth =
+                                        dimensions.unselectedSize +
+                                            dimensions.spacing;
+                                    int centerIndex =
+                                        (notification.metrics.pixels /
+                                                itemFullWidth)
+                                            .round();
+                                    if (centerIndex >= 0 &&
+                                        centerIndex < state.items.length) {
+                                      if (_lastHapticIndex != centerIndex) {
+                                        _lastHapticIndex = centerIndex;
+                                        if (widget.enableHapticFeedback) {
+                                          HapticFeedback.selectionClick();
+                                        }
+                                        widget.pageController
+                                            .jumpToPage(centerIndex);
+                                        context.read<GalleryBloc>().add(
+                                              GalleryIndexChanged(centerIndex),
+                                            );
                                       }
-                                      widget.pageController
-                                          .jumpToPage(centerIndex);
-                                      context.read<GalleryBloc>().add(
-                                            GalleryIndexChanged(centerIndex),
-                                          );
                                     }
                                   }
-                                }
-                                return false;
-                              },
-                              child: ListView.builder(
-                                controller: _scrollController,
-                                scrollDirection: Axis.horizontal,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: (screenWidth -
-                                          dimensions.unselectedSize -
-                                          dimensions.spacing) /
-                                      2,
-                                ),
-                                itemCount: state.items.length,
-                                itemBuilder: (context, index) {
-                                  final isSelected =
-                                      index == state.currentIndex;
-                                  return GestureDetector(
-                                    onTap: () {
-                                      if (widget.enableHapticFeedback) {
-                                        HapticFeedback.lightImpact();
-                                      }
-                                      widget.pageController.animateToPage(
-                                        index,
-                                        duration:
-                                            const Duration(milliseconds: 300),
-                                        curve: Curves.easeInOut,
-                                      );
-                                      context.read<GalleryBloc>().add(
-                                            GalleryIndexChanged(index),
-                                          );
-                                    },
-                                    child: SizedBox(
-                                      width: dimensions.unselectedSize +
-                                          dimensions.spacing,
-                                      child: Center(
-                                        child: AnimatedContainer(
+                                  return false;
+                                },
+                                child: ListView.builder(
+                                  controller: _scrollController,
+                                  scrollDirection: Axis.horizontal,
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: (screenWidth -
+                                            dimensions.unselectedSize -
+                                            dimensions.spacing) /
+                                        2,
+                                  ),
+                                  itemCount: state.items.length,
+                                  itemBuilder: (context, index) {
+                                    final isSelected =
+                                        index == state.currentIndex;
+                                    return GestureDetector(
+                                      onTap: () {
+                                        if (widget.enableHapticFeedback) {
+                                          HapticFeedback.lightImpact();
+                                        }
+                                        widget.pageController.animateToPage(
+                                          index,
                                           duration:
-                                              const Duration(milliseconds: 250),
-                                          curve: Curves.easeOutBack,
-                                          width: isSelected
-                                              ? dimensions.selectedSize
-                                              : dimensions.unselectedSize,
-                                          height: isSelected
-                                              ? dimensions.selectedSize
-                                              : dimensions.unselectedSize,
-                                          decoration: BoxDecoration(
-                                            border: isSelected
-                                                ? Border.all(
-                                                    color: Colors.white,
-                                                    width: 3)
-                                                : null,
-                                            borderRadius: BorderRadius.circular(
-                                              dimensions.unselectedSize * 0.2,
+                                              const Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                        context.read<GalleryBloc>().add(
+                                              GalleryIndexChanged(index),
+                                            );
+                                      },
+                                      child: SizedBox(
+                                        width: dimensions.unselectedSize +
+                                            dimensions.spacing,
+                                        child: Center(
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                                milliseconds: 250),
+                                            curve: Curves.easeOutBack,
+                                            width: isSelected
+                                                ? dimensions.selectedSize
+                                                : dimensions.unselectedSize,
+                                            height: isSelected
+                                                ? dimensions.selectedSize
+                                                : dimensions.unselectedSize,
+                                            decoration: BoxDecoration(
+                                              border: isSelected
+                                                  ? Border.all(
+                                                      color: Colors.white,
+                                                      width: 3)
+                                                  : null,
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                dimensions.unselectedSize * 0.2,
+                                              ),
                                             ),
-                                          ),
-                                          child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(
-                                              dimensions.unselectedSize * 0.15,
-                                            ),
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                _buildThumbnail(
-                                                  state.items[index],
-                                                  dimensions,
-                                                ),
-                                                if (state.items[index].type !=
-                                                    GalleryItemType.image)
-                                                  Positioned(
-                                                    left: 4,
-                                                    bottom: 4,
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                              1),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.black
-                                                            .withValues(
-                                                                alpha: 0.5),
-                                                        shape: BoxShape.circle,
-                                                      ),
-                                                      child: const Icon(
-                                                        Icons.play_arrow,
-                                                        size: 10,
-                                                        color: Colors.white,
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                dimensions.unselectedSize *
+                                                    0.15,
+                                              ),
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  _buildThumbnail(
+                                                    state.items[index],
+                                                    dimensions,
+                                                  ),
+                                                  if (state.items[index].type !=
+                                                      GalleryItemType.image)
+                                                    Positioned(
+                                                      left: 4,
+                                                      bottom: 4,
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(1),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.black
+                                                              .withValues(
+                                                                  alpha: 0.5),
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.play_arrow,
+                                                          size: 10,
+                                                          color: Colors.white,
+                                                        ),
                                                       ),
                                                     ),
-                                                  ),
-                                              ],
+                                                ],
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  );
-                                },
+                                    );
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              ),
-            );
+                );
               },
             );
           },
