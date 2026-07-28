@@ -36,7 +36,6 @@ class GalleryImageViewer extends StatefulWidget {
   final ValueNotifier<Player?> activePlayerNotifier;
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
   final void Function(int currentIndex)? onClose;
-  final String? noInternetMessage;
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
@@ -56,7 +55,6 @@ class GalleryImageViewer extends StatefulWidget {
     required this.activePlayerNotifier,
     required this.activeYoutubeNotifier,
     this.onClose,
-    this.noInternetMessage,
     this.offlineBuilder,
     this.theme,
     this.cacheManager,
@@ -250,7 +248,10 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
   void _resetScale() => _currentScale.value = 1.0;
 
   void _handleDismiss(BuildContext context) {
-    final currentIndex = context.read<GalleryBloc>().state.currentIndex;
+    final currentIndex = context
+        .read<GalleryBloc>()
+        .state
+        .currentIndex;
     if (widget.onClose != null) {
       widget.onClose!(currentIndex);
     } else {
@@ -287,7 +288,10 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
 
   @override
   Widget build(BuildContext context) {
-    _screenHeight = MediaQuery.of(context).size.height;
+    _screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
 
     return Listener(
       behavior: HitTestBehavior.translucent,
@@ -375,45 +379,45 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
         content = DeferredInit(
           delay: _mediaInitDelay,
           placeholder: widget.progressWidget,
-          builder: (_) => GalleryVideoItem(
-            item: item,
-            index: index,
-            activePlayerNotifier: widget.activePlayerNotifier,
-            galleryBloc: bloc,
-            noInternetMessage: widget.noInternetMessage,
-            offlineBuilder: widget.offlineBuilder,
-            theme: widget.theme,
-          ),
+          builder: (_) =>
+              GalleryVideoItem(
+                item: item,
+                index: index,
+                activePlayerNotifier: widget.activePlayerNotifier,
+                galleryBloc: bloc,
+                offlineBuilder: widget.offlineBuilder,
+                theme: widget.theme,
+              ),
         );
       case GalleryItemType.audio:
         content = DeferredInit(
           delay: _mediaInitDelay,
           placeholder: widget.progressWidget,
-          builder: (_) => GalleryAudioItem(
-            item: item,
-            index: index,
-            activePlayerNotifier: widget.activePlayerNotifier,
-            galleryBloc: bloc,
-            noInternetMessage: widget.noInternetMessage,
-            offlineBuilder: widget.offlineBuilder,
-            theme: widget.theme,
-            cacheManager: widget.cacheManager,
-            memCacheWidth: widget.memCacheWidth,
-          ),
+          builder: (_) =>
+              GalleryAudioItem(
+                item: item,
+                index: index,
+                activePlayerNotifier: widget.activePlayerNotifier,
+                galleryBloc: bloc,
+                offlineBuilder: widget.offlineBuilder,
+                theme: widget.theme,
+                cacheManager: widget.cacheManager,
+                memCacheWidth: widget.memCacheWidth,
+              ),
         );
       case GalleryItemType.youtube:
         content = DeferredInit(
           delay: _mediaInitDelay,
           placeholder: widget.progressWidget,
-          builder: (_) => GalleryYoutubeItem(
-            item: item,
-            index: index,
-            activeYoutubeNotifier: widget.activeYoutubeNotifier,
-            galleryBloc: bloc,
-            noInternetMessage: widget.noInternetMessage,
-            offlineBuilder: widget.offlineBuilder,
-            theme: widget.theme,
-          ),
+          builder: (_) =>
+              GalleryYoutubeItem(
+                item: item,
+                index: index,
+                activeYoutubeNotifier: widget.activeYoutubeNotifier,
+                galleryBloc: bloc,
+                offlineBuilder: widget.offlineBuilder,
+                theme: widget.theme,
+              ),
         );
     }
 
