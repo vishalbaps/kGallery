@@ -24,7 +24,6 @@ class GalleryYoutubeItem extends StatefulWidget {
   final int index;
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier;
   final GalleryBloc galleryBloc;
-  final String? noInternetMessage;
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
@@ -34,7 +33,6 @@ class GalleryYoutubeItem extends StatefulWidget {
     required this.index,
     required this.activeYoutubeNotifier,
     required this.galleryBloc,
-    this.noInternetMessage,
     this.offlineBuilder,
     this.theme,
   });
@@ -302,41 +300,42 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
               GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
               if (isOffline)
                 Positioned.fill(child: _buildOfflineView())
-              else ...[
-                // Until the controller exists / the player reports ready, the
-                // WebView paints black — cover it with the loader so a swipe
-                // between videos shows progress instead of a black screen.
-                if (_controller == null)
-                  const GalleryMediaLoader()
-                else
-                  AnimatedBuilder(
-                    animation: _controller!,
-                    builder: (context, _) {
-                      final c = _controller;
-                      if (c == null) return const SizedBox.shrink();
-                      final v = c.value;
-                      if (!v.isReady) return const GalleryMediaLoader();
-                      return Center(
-                        child: GalleryCenterControls(
-                          isPlaying: v.isPlaying,
-                          isReady: v.isReady,
-                          bufferingStream: null,
-                          initialBuffering:
-                              v.playerState == PlayerState.buffering,
-                          galleryBloc: widget.galleryBloc,
-                          onTap: _togglePlayPause,
-                        ),
-                      );
-                    },
-                  ),
-                if (_controller != null)
-                  Positioned.fill(
-                    child: GalleryYoutubeFullscreenButton(
-                      galleryBloc: widget.galleryBloc,
-                      onTap: _enterFullscreen,
+              else
+                ...[
+                  // Until the controller exists / the player reports ready, the
+                  // WebView paints black — cover it with the loader so a swipe
+                  // between videos shows progress instead of a black screen.
+                  if (_controller == null)
+                    const GalleryMediaLoader()
+                  else
+                    AnimatedBuilder(
+                      animation: _controller!,
+                      builder: (context, _) {
+                        final c = _controller;
+                        if (c == null) return const SizedBox.shrink();
+                        final v = c.value;
+                        if (!v.isReady) return const GalleryMediaLoader();
+                        return Center(
+                          child: GalleryCenterControls(
+                            isPlaying: v.isPlaying,
+                            isReady: v.isReady,
+                            bufferingStream: null,
+                            initialBuffering:
+                            v.playerState == PlayerState.buffering,
+                            galleryBloc: widget.galleryBloc,
+                            onTap: _togglePlayPause,
+                          ),
+                        );
+                      },
                     ),
-                  ),
-              ],
+                  if (_controller != null)
+                    Positioned.fill(
+                      child: GalleryYoutubeFullscreenButton(
+                        galleryBloc: widget.galleryBloc,
+                        onTap: _enterFullscreen,
+                      ),
+                    ),
+                ],
             ],
           );
         },

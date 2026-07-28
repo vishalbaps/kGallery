@@ -180,7 +180,7 @@ Navigator.of(context).push(
 | `enableHapticFeedback` | `bool` | `true` | Haptic feedback when tapping thumbnails. |
 | `leading` | `Widget?` | Back arrow | Custom leading widget in the top bar. |
 | `title` | `String?` | — | Custom title displayed in the top bar. |
-| `noInternetMessage` | `String?` | Theme default | Message shown when media cannot load due to no connectivity. |
+| `offlineBuilder` | `Widget Function(BuildContext, GalleryItem)?` | Built-in view | Custom placeholder shown inside the viewer when a remote item can't load (e.g. offline). Defaults to a theme-aware icon/title/subtitle view; the item reloads automatically when the user slides back to it. |
 | `onIndexChanged` | `void Function(int)?` | — | Called whenever the visible item changes. |
 | `onClose` | `void Function(int)?` | `Navigator.pop` | Called when the gallery is closed; receives the last visible index. |
 | `theme` | `GalleryTheme?` | `GalleryTheme.dark()` | Visual customization (colors, text styles, thumbnail sizes). |
@@ -201,7 +201,6 @@ Navigator.of(context).push(
 | `titleTextStyle` | — | Text style for item titles in the info panel. |
 | `descriptionTextStyle` | — | Text style for item descriptions in the info panel. |
 | `counterTextStyle` | — | Text style for the `1 / N` counter in the top bar. |
-| `noInternetMessage` | `'No internet connection…'` | Default no-connectivity message. |
 
 ## 📄 License
 

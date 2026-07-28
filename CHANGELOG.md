@@ -2,9 +2,9 @@
 
 - **New**: In-viewer **offline / load-failure placeholder**. When a remote item (image, video, audio, or YouTube) can't load because the device is offline, the viewer now shows a built-in placeholder (`GalleryOfflineView`) — an icon, title, and subtitle that adapt to the gallery background (dark or light) — instead of a blank or broken frame. The item reloads automatically when the user slides back to it after connectivity returns (no retry button).
 - **New**: `offlineBuilder` parameter on `KGallery` / `KGallery.show(...)` to render your own offline placeholder instead of the default.
-- **New**: `GalleryTheme.offlineTitle` (default `"You're offline"`) customizes the default placeholder's headline.
 - **New**: `ConnectivityService` — a shared singleton wrapping `connectivity_plus` with `isConnected()` and an `onConnectivityChanged` stream — is now exported from `package:k_gallery`, along with `GalleryOfflineView` and the `GalleryOfflineBuilder` typedef.
 - **Refactor**: Media items (video, audio, YouTube) now track offline state through the BLoC (new `GallerySetItemOffline` event + `offlineItems` state) instead of local `setState`, so the placeholder stays in sync across rebuilds and clears automatically on a successful load.
+- **Breaking**: Removed `noInternetMessage` (from `KGallery`, `KGallery.show(...)`, and `GalleryTheme`). It only drove the old no-connectivity SnackBar, which the in-viewer placeholder replaces. Use `offlineBuilder` for a custom offline UI instead.
 
 ## 1.1.2
 

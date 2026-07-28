@@ -20,7 +20,6 @@ class GalleryVideoItem extends StatefulWidget {
   final int index;
   final ValueNotifier<Player?> activePlayerNotifier;
   final GalleryBloc galleryBloc;
-  final String? noInternetMessage;
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
@@ -30,7 +29,6 @@ class GalleryVideoItem extends StatefulWidget {
     required this.index,
     required this.activePlayerNotifier,
     required this.galleryBloc,
-    this.noInternetMessage,
     this.offlineBuilder,
     this.theme,
   });
@@ -210,48 +208,49 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
               GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
               if (isOffline)
                 Positioned.fill(child: _buildOfflineView())
-              else ...[
-                // Until the controller exists / the first frame is painted, the
-                // Video texture is black — cover it with the loader so a swipe
-                // between videos shows progress instead of a black screen.
-                // `rect` flips null → non-null exactly when the first frame
-                // renders, so we read it directly instead of mirroring in state.
-                if (_videoController == null)
-                  const GalleryMediaLoader()
-                else
-                  ValueListenableBuilder<Rect?>(
-                    valueListenable: _videoController!.rect,
-                    builder: (context, rect, _) {
-                      if (rect == null) return const GalleryMediaLoader();
-                      final p = _player;
-                      if (p == null) return const SizedBox.shrink();
-                      return Center(
-                        child: StreamBuilder<bool>(
-                          initialData: p.state.playing,
-                          stream: p.stream.playing,
-                          builder: (context, snapshot) {
-                            return GalleryCenterControls(
-                              isPlaying: snapshot.data ?? false,
-                              isReady: true,
-                              bufferingStream: p.stream.buffering,
-                              initialBuffering: p.state.buffering,
-                              galleryBloc: widget.galleryBloc,
-                              onTap: _togglePlayPause,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                if (_player != null)
-                  Positioned.fill(
-                    child: GalleryMediaKitFullscreenButton(
-                      player: _player!,
-                      galleryBloc: widget.galleryBloc,
-                      onTap: _enterFullscreen,
+              else
+                ...[
+                  // Until the controller exists / the first frame is painted, the
+                  // Video texture is black — cover it with the loader so a swipe
+                  // between videos shows progress instead of a black screen.
+                  // `rect` flips null → non-null exactly when the first frame
+                  // renders, so we read it directly instead of mirroring in state.
+                  if (_videoController == null)
+                    const GalleryMediaLoader()
+                  else
+                    ValueListenableBuilder<Rect?>(
+                      valueListenable: _videoController!.rect,
+                      builder: (context, rect, _) {
+                        if (rect == null) return const GalleryMediaLoader();
+                        final p = _player;
+                        if (p == null) return const SizedBox.shrink();
+                        return Center(
+                          child: StreamBuilder<bool>(
+                            initialData: p.state.playing,
+                            stream: p.stream.playing,
+                            builder: (context, snapshot) {
+                              return GalleryCenterControls(
+                                isPlaying: snapshot.data ?? false,
+                                isReady: true,
+                                bufferingStream: p.stream.buffering,
+                                initialBuffering: p.state.buffering,
+                                galleryBloc: widget.galleryBloc,
+                                onTap: _togglePlayPause,
+                              );
+                            },
+                          ),
+                        );
+                      },
                     ),
-                  ),
-              ],
+                  if (_player != null)
+                    Positioned.fill(
+                      child: GalleryMediaKitFullscreenButton(
+                        player: _player!,
+                        galleryBloc: widget.galleryBloc,
+                        onTap: _enterFullscreen,
+                      ),
+                    ),
+                ],
             ],
           );
         },

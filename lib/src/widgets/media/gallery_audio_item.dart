@@ -22,7 +22,6 @@ class GalleryAudioItem extends StatefulWidget {
   final int index;
   final ValueNotifier<Player?> activePlayerNotifier;
   final GalleryBloc galleryBloc;
-  final String? noInternetMessage;
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
@@ -38,7 +37,6 @@ class GalleryAudioItem extends StatefulWidget {
     required this.index,
     required this.activePlayerNotifier,
     required this.galleryBloc,
-    this.noInternetMessage,
     this.offlineBuilder,
     this.theme,
     this.cacheManager,
@@ -203,25 +201,26 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
               GalleryMediaTapOverlay(galleryBloc: widget.galleryBloc),
               if (isOffline)
                 Positioned.fill(child: _buildOfflineView())
-              else if (_player != null)
-                Center(
-                  child: StreamBuilder<bool>(
-                    initialData: _player!.state.playing,
-                    stream: _player!.stream.playing,
-                    builder: (context, snapshot) {
-                      final p = _player;
-                      if (p == null) return const SizedBox.shrink();
-                      return GalleryCenterControls(
-                        isPlaying: snapshot.data ?? false,
-                        isReady: true,
-                        bufferingStream: p.stream.buffering,
-                        initialBuffering: p.state.buffering,
-                        galleryBloc: widget.galleryBloc,
-                        onTap: _togglePlayPause,
-                      );
-                    },
+              else
+                if (_player != null)
+                  Center(
+                    child: StreamBuilder<bool>(
+                      initialData: _player!.state.playing,
+                      stream: _player!.stream.playing,
+                      builder: (context, snapshot) {
+                        final p = _player;
+                        if (p == null) return const SizedBox.shrink();
+                        return GalleryCenterControls(
+                          isPlaying: snapshot.data ?? false,
+                          isReady: true,
+                          bufferingStream: p.stream.buffering,
+                          initialBuffering: p.state.buffering,
+                          galleryBloc: widget.galleryBloc,
+                          onTap: _togglePlayPause,
+                        );
+                      },
+                    ),
                   ),
-                ),
             ],
           );
         },
@@ -246,21 +245,22 @@ class _GalleryAudioItemState extends State<GalleryAudioItem> with GalleryUIHideM
     return Center(
       child: thumb != null
           ? galleryImage(
-              source: thumb,
-              fit: BoxFit.contain,
-              cacheManager: widget.cacheManager,
-              memCacheWidth: widget.memCacheWidth,
-              errorWidget: (context, _, __) => const Icon(
-                Icons.audiotrack,
-                size: 100,
-                color: Colors.white54,
-              ),
-            )
+        source: thumb,
+        fit: BoxFit.contain,
+        cacheManager: widget.cacheManager,
+        memCacheWidth: widget.memCacheWidth,
+        errorWidget: (context, _, __) =>
+        const Icon(
+          Icons.audiotrack,
+          size: 100,
+          color: Colors.white54,
+        ),
+      )
           : const Icon(
-              Icons.audiotrack,
-              size: 100,
-              color: Colors.white54,
-            ),
+        Icons.audiotrack,
+        size: 100,
+        color: Colors.white54,
+      ),
     );
   }
 }
