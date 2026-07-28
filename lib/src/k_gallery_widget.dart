@@ -740,10 +740,7 @@ class _GalleryTextPanel extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
-                colors: [
-                  Colors.black.withValues(alpha: 0.5),
-                  Colors.transparent
-                ],
+                colors: theme.textPanelGradientColors,
                 stops: const [0.3, 1.0],
               ),
             ),
@@ -786,24 +783,7 @@ class _GalleryTextPanel extends StatelessWidget {
               ),
             ),
           ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.7),
-                  ],
-                ),
-              ),
-            ),
-          ),
+
         ],
       ),
     );

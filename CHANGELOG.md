@@ -1,6 +1,7 @@
 ## 1.1.4
 
-- **New**: `GalleryTheme.thumbnailStripColor` — colors the bottom thumbnail strip independently of the top bar. Falls back to `appBarColor` when `null`.
+- **New**: `GalleryTheme.textPanelGradientStartColor` / `GalleryTheme.textPanelGradientEndColor` — the two colors of the title/description panel's background gradient (start = behind the text, end = fading out over the media). Default to `thumbnailStripColor` → `Colors.transparent`, i.e. the previous look.
+- **New**: `GalleryTheme.thumbnailStripColor` — colors the bottom thumbnail strip independently of the top bar. Defaults to black at 65% opacity.
 - **Fix**: The thumbnail strip and top bar now honor the theme color instead of a hardcoded semi-transparent black with a backdrop blur. With a light or custom color the strip previously stayed dark; it now renders the configured color exactly, fixing the light-mode background.
 - **Docs**: README refreshed for bidirectional swipe-to-dismiss and the offline placeholder, and bumped the install snippet to `^1.1.4`.
 

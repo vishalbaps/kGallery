@@ -77,7 +77,7 @@ kGallery/
 - `image`, `video`, `audio`
 
 ### `GalleryTheme`
-- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `thumbnailStripColor?` (falls back to appBarColor), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`
+- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `thumbnailStripColor` (black 65%), `textPanelGradientStartColor?` (falls back to thumbnailStripColor), `textPanelGradientEndColor?` (falls back to transparent), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`
 - Factory: `GalleryTheme.dark()`
 
 ---

@@ -193,8 +193,10 @@ Navigator.of(context).push(
 | Field | Default | Description |
 |---|---|---|
 | `backgroundColor` | `Colors.black` | Gallery background color. |
-| `appBarColor` | `black 50%` | Top bar background (and thumbnail strip, unless `thumbnailStripColor` is set). |
-| `thumbnailStripColor` | `null` → `appBarColor` | Bottom thumbnail strip background. Set to color the strip independently of the top bar. |
+| `appBarColor` | `black 50%` | Top bar background. |
+| `thumbnailStripColor` | `black 65%` | Bottom thumbnail strip background. Set to color the strip independently of the top bar. |
+| `textPanelGradientStartColor` | `null` → `thumbnailStripColor` | Bottom (opaque) color of the title/description panel gradient — the end behind the text. |
+| `textPanelGradientEndColor` | `null` → `Colors.transparent` | Top color of the title/description panel gradient — the end that fades out over the media. |
 | `seekbarActiveColor` | `Colors.white` | Played portion and thumb color of the seekbar. |
 | `seekbarInactiveColor` | `Colors.white30` | Buffered/unplayed portion color of the seekbar. |
 | `mobileThumbnailHeight` | `90` | Thumbnail strip height on phones (dp). |

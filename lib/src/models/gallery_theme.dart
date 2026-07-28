@@ -18,7 +18,20 @@ class GalleryTheme {
   ///
   /// When `null`, the strip falls back to [appBarColor]. Set this to give the
   /// thumbnail strip a different background from the top bar.
-  final Color? thumbnailStripColor;
+  final Color thumbnailStripColor;
+
+  /// The bottom (opaque) color of the title/description panel's background
+  /// gradient — the end that sits behind the text, above the thumbnail strip.
+  ///
+  /// When `null`, falls back to [thumbnailStripColor] so the panel blends into
+  /// the strip below it.
+  final Color? textPanelGradientStartColor;
+
+  /// The top color of the title/description panel's background gradient — the
+  /// end that fades out over the media.
+  ///
+  /// When `null`, defaults to [Colors.transparent].
+  final Color? textPanelGradientEndColor;
 
   /// The color of the active seekbar.
   /// Defaults to [Colors.white].
@@ -49,7 +62,9 @@ class GalleryTheme {
   const GalleryTheme({
     this.backgroundColor = Colors.black,
     this.appBarColor = const Color(0x80000000),
-    this.thumbnailStripColor,
+    this.thumbnailStripColor = const Color(0xA6000000),
+    this.textPanelGradientStartColor,
+    this.textPanelGradientEndColor,
     this.seekbarActiveColor = Colors.white,
     this.seekbarInactiveColor = Colors.white30,
     this.titleTextStyle,
@@ -58,6 +73,14 @@ class GalleryTheme {
     this.mobileThumbnailHeight = 90,
     this.tabletThumbnailHeight = 110,
   });
+
+  /// The resolved `[start, end]` colors for the text panel's background
+  /// gradient, applying the fallbacks documented on
+  /// [textPanelGradientStartColor] and [textPanelGradientEndColor].
+  List<Color> get textPanelGradientColors => [
+        textPanelGradientStartColor ?? thumbnailStripColor,
+        textPanelGradientEndColor ?? Colors.transparent,
+      ];
 
   /// Default dark theme for the gallery.
   factory GalleryTheme.dark() => const GalleryTheme();
