@@ -135,7 +135,7 @@ static const minTextPanelHeight = 70.0
 ### `KGallery` internal stack (bottom to top)
 1. `GalleryImageViewer` (full screen)
 2. `_GalleryOverlayLayer` (seekbar + text panel) — above gallery
-3. `_GalleryTopBar` (app bar with blur) — positioned top
+3. `_GalleryTopBar` (app bar, `theme.appBarColor`) — positioned top
 4. `GalleryThumbnailStrip` — positioned bottom
 
 ---

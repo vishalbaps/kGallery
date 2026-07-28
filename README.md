@@ -28,11 +28,11 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 - 🔍 **Pinch-to-Zoom**: Advanced image viewing with tap-centered double-tap zoom and smooth pinch gestures (up to 8×).
 - 🧬 **Base64 Images**: Render inline `data:image/...;base64,...` URIs anywhere an image appears — no network request, no model changes.
 - 🎞️ **Thumbnail Strip**: Animated, haptic-enabled thumbnail strip with a live seekbar for quick navigation.
-- 🖐️ **Swipe-to-Dismiss**: Natural vertical swipe gesture to exit the gallery with dynamic background fading.
+- 🖐️ **Swipe-to-Dismiss**: Natural swipe gesture to exit the gallery — flick **up or down** — with an Apple Photos–style fly-away and dynamic background fading.
 - 📝 **Draggable Info Panel**: Overlays for titles and descriptions that can be expanded or collapsed.
 - 📱 **Adaptive Layout**: Optimized for both mobile phones and tablets.
 - 🎬 **Video/Audio Controls**: Integrated seekbar and playback controls powered by `media_kit`.
-- 🌐 **Connectivity Aware**: Automatically checks for internet before playing remote media.
+- 🌐 **Connectivity Aware**: Checks for internet before playing remote media, and shows a theme-aware **offline placeholder** when a remote item can't load — auto-reloading when the user returns to it. Fully replaceable via `offlineBuilder`.
 - 🎨 **Fully Customizable**: Inject your own progress widgets, action menus, and theme colors.
 
 ## 🚀 Getting Started
@@ -41,7 +41,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ```yaml
 dependencies:
-  k_gallery: ^1.1.1
+  k_gallery: ^1.1.4
 ```
 
 ### 2. Platform Setup
@@ -180,6 +180,7 @@ Navigator.of(context).push(
 | `enableHapticFeedback` | `bool` | `true` | Haptic feedback when tapping thumbnails. |
 | `leading` | `Widget?` | Back arrow | Custom leading widget in the top bar. |
 | `title` | `String?` | — | Custom title displayed in the top bar. |
+| `noInternetMessage` | `String?` | theme value | Message shown when no internet is detected for remote media. Falls back to `GalleryTheme.noInternetMessage`. |
 | `offlineBuilder` | `Widget Function(BuildContext, GalleryItem)?` | Built-in view | Custom placeholder shown inside the viewer when a remote item can't load (e.g. offline). Defaults to a theme-aware icon/title/subtitle view; the item reloads automatically when the user slides back to it. |
 | `onIndexChanged` | `void Function(int)?` | — | Called whenever the visible item changes. |
 | `onClose` | `void Function(int)?` | `Navigator.pop` | Called when the gallery is closed; receives the last visible index. |
@@ -201,6 +202,8 @@ Navigator.of(context).push(
 | `titleTextStyle` | — | Text style for item titles in the info panel. |
 | `descriptionTextStyle` | — | Text style for item descriptions in the info panel. |
 | `counterTextStyle` | — | Text style for the `1 / N` counter in the top bar. |
+| `noInternetMessage` | `'No internet connection. Please check your network.'` | Message shown when remote media can't play due to no connection. |
+| `offlineTitle` | `"You're offline"` | Headline shown in the built-in offline placeholder (`GalleryOfflineView`). |
 
 ## 📄 License
 
