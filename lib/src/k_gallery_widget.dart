@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -204,8 +202,10 @@ class KGallery extends StatefulWidget {
   }) {
     return Navigator.of(context).push<int>(
       PageRouteBuilder<int>(
-        opaque: false, // keep the screen behind painted (see-through dismiss)
-        barrierColor: Colors.transparent, // no scrim over the screen behind
+        opaque: false,
+        // keep the screen behind painted (see-through dismiss)
+        barrierColor: Colors.transparent,
+        // no scrim over the screen behind
         transitionDuration: transitionDuration,
         reverseTransitionDuration: transitionDuration,
         pageBuilder: (context, animation, secondaryAnimation) => FadeTransition(
@@ -493,27 +493,24 @@ class _GalleryTopBar extends StatelessWidget {
           left: 0,
           right: 0,
           child: ClipRect(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                height: topBarHeight + MediaQuery.of(context).padding.top,
-                padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).padding.top,
-                  left: horizontalPadding,
-                  right: horizontalPadding,
-                ),
-                decoration: BoxDecoration(color: theme.appBarColor),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    leadingWidget,
-                    Expanded(child: Center(child: titleWidget)),
-                    if (customActions != null)
-                      customActions
-                    else
-                      SizedBox(width: isTablet ? 64 : 48),
-                  ],
-                ),
+            child: Container(
+              height: topBarHeight + MediaQuery.of(context).padding.top,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top,
+                left: horizontalPadding,
+                right: horizontalPadding,
+              ),
+              decoration: BoxDecoration(color: theme.appBarColor),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  leadingWidget,
+                  Expanded(child: Center(child: titleWidget)),
+                  if (customActions != null)
+                    customActions
+                  else
+                    SizedBox(width: isTablet ? 64 : 48),
+                ],
               ),
             ),
           ),
