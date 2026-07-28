@@ -155,7 +155,9 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
                   child: ClipRect(
                     child: Container(
                       decoration:
-                          BoxDecoration(color: widget.theme.appBarColor),
+                          BoxDecoration(
+                              color: widget.theme.thumbnailStripColor ??
+                                  widget.theme.appBarColor),
                       child: Column(
                         children: [
                           if (showSeekbar)

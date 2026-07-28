@@ -1,7 +1,8 @@
 ## 1.1.4
 
-- **Fix**: The thumbnail strip and top bar now honor `GalleryTheme.appBarColor` instead of a hardcoded semi-transparent black with a backdrop blur. With a light or custom `appBarColor` the strip previously stayed dark (the hardcoded black tint showed through); it now renders the configured color exactly, fixing the light-mode background.
-- **Docs**: README refreshed for the offline placeholder and bidirectional swipe-to-dismiss, updated the `GalleryTheme` field table, and bumped the install snippet to `^1.1.4`.
+- **New**: `GalleryTheme.thumbnailStripColor` — colors the bottom thumbnail strip independently of the top bar. Falls back to `appBarColor` when `null`.
+- **Fix**: The thumbnail strip and top bar now honor the theme color instead of a hardcoded semi-transparent black with a backdrop blur. With a light or custom color the strip previously stayed dark; it now renders the configured color exactly, fixing the light-mode background.
+- **Docs**: README refreshed for bidirectional swipe-to-dismiss and the offline placeholder, and bumped the install snippet to `^1.1.4`.
 
 ## 1.1.3
 

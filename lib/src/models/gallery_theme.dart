@@ -9,9 +9,16 @@ class GalleryTheme {
   /// Defaults to [Colors.black].
   final Color backgroundColor;
 
-  /// The background color of the top bar and thumbnail strip.
+  /// The background color of the top bar (and the thumbnail strip, unless
+  /// [thumbnailStripColor] is set).
   /// Defaults to black with 50% opacity.
   final Color appBarColor;
+
+  /// The background color of the bottom thumbnail strip.
+  ///
+  /// When `null`, the strip falls back to [appBarColor]. Set this to give the
+  /// thumbnail strip a different background from the top bar.
+  final Color? thumbnailStripColor;
 
   /// The color of the active seekbar.
   /// Defaults to [Colors.white].
@@ -42,6 +49,7 @@ class GalleryTheme {
   const GalleryTheme({
     this.backgroundColor = Colors.black,
     this.appBarColor = const Color(0x80000000),
+    this.thumbnailStripColor,
     this.seekbarActiveColor = Colors.white,
     this.seekbarInactiveColor = Colors.white30,
     this.titleTextStyle,

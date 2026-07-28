@@ -77,7 +77,7 @@ kGallery/
 - `image`, `video`, `audio`
 
 ### `GalleryTheme`
-- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`, `noInternetMessage`, `offlineTitle` ("You're offline")
+- Fields: `backgroundColor` (black), `appBarColor` (black 50%), `thumbnailStripColor?` (falls back to appBarColor), `seekbarActiveColor` (white), `seekbarInactiveColor` (white30), `mobileThumbnailHeight` (90), `tabletThumbnailHeight` (110), `titleTextStyle?`, `descriptionTextStyle?`, `counterTextStyle?`
 - Factory: `GalleryTheme.dark()`
 
 ---

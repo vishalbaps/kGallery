@@ -180,7 +180,6 @@ Navigator.of(context).push(
 | `enableHapticFeedback` | `bool` | `true` | Haptic feedback when tapping thumbnails. |
 | `leading` | `Widget?` | Back arrow | Custom leading widget in the top bar. |
 | `title` | `String?` | — | Custom title displayed in the top bar. |
-| `noInternetMessage` | `String?` | theme value | Message shown when no internet is detected for remote media. Falls back to `GalleryTheme.noInternetMessage`. |
 | `offlineBuilder` | `Widget Function(BuildContext, GalleryItem)?` | Built-in view | Custom placeholder shown inside the viewer when a remote item can't load (e.g. offline). Defaults to a theme-aware icon/title/subtitle view; the item reloads automatically when the user slides back to it. |
 | `onIndexChanged` | `void Function(int)?` | — | Called whenever the visible item changes. |
 | `onClose` | `void Function(int)?` | `Navigator.pop` | Called when the gallery is closed; receives the last visible index. |
@@ -194,7 +193,8 @@ Navigator.of(context).push(
 | Field | Default | Description |
 |---|---|---|
 | `backgroundColor` | `Colors.black` | Gallery background color. |
-| `appBarColor` | `black 50%` | Top bar and thumbnail strip background color. |
+| `appBarColor` | `black 50%` | Top bar background (and thumbnail strip, unless `thumbnailStripColor` is set). |
+| `thumbnailStripColor` | `null` → `appBarColor` | Bottom thumbnail strip background. Set to color the strip independently of the top bar. |
 | `seekbarActiveColor` | `Colors.white` | Played portion and thumb color of the seekbar. |
 | `seekbarInactiveColor` | `Colors.white30` | Buffered/unplayed portion color of the seekbar. |
 | `mobileThumbnailHeight` | `90` | Thumbnail strip height on phones (dp). |
@@ -202,8 +202,6 @@ Navigator.of(context).push(
 | `titleTextStyle` | — | Text style for item titles in the info panel. |
 | `descriptionTextStyle` | — | Text style for item descriptions in the info panel. |
 | `counterTextStyle` | — | Text style for the `1 / N` counter in the top bar. |
-| `noInternetMessage` | `'No internet connection. Please check your network.'` | Message shown when remote media can't play due to no connection. |
-| `offlineTitle` | `"You're offline"` | Headline shown in the built-in offline placeholder (`GalleryOfflineView`). |
 
 ## 📄 License
 
