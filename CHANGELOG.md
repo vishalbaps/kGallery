@@ -1,5 +1,6 @@
 ## 1.1.4
 
+- **Breaking**: Removed `noInternetMessage` (from `KGallery`, `KGallery.show(...)`, and `GalleryTheme`). It only drove the old no-connectivity SnackBar, which the in-viewer offline placeholder (added in 1.1.3) replaces. Use `offlineBuilder` for a custom offline UI instead.
 - **New**: `GalleryTheme.textPanelGradientStartColor` / `GalleryTheme.textPanelGradientEndColor` — the two colors of the title/description panel's background gradient (start = behind the text, end = fading out over the media). Default to `thumbnailStripColor` → `Colors.transparent`, i.e. the previous look.
 - **New**: `GalleryTheme.thumbnailStripColor` — colors the bottom thumbnail strip independently of the top bar. Defaults to black at 65% opacity.
 - **Fix**: The thumbnail strip and top bar now honor the theme color instead of a hardcoded semi-transparent black with a backdrop blur. With a light or custom color the strip previously stayed dark; it now renders the configured color exactly, fixing the light-mode background.
@@ -11,7 +12,6 @@
 - **New**: `offlineBuilder` parameter on `KGallery` / `KGallery.show(...)` to render your own offline placeholder instead of the default.
 - **New**: `ConnectivityService` — a shared singleton wrapping `connectivity_plus` with `isConnected()` and an `onConnectivityChanged` stream — is now exported from `package:k_gallery`, along with `GalleryOfflineView` and the `GalleryOfflineBuilder` typedef.
 - **Refactor**: Media items (video, audio, YouTube) now track offline state through the BLoC (new `GallerySetItemOffline` event + `offlineItems` state) instead of local `setState`, so the placeholder stays in sync across rebuilds and clears automatically on a successful load.
-- **Breaking**: Removed `noInternetMessage` (from `KGallery`, `KGallery.show(...)`, and `GalleryTheme`). It only drove the old no-connectivity SnackBar, which the in-viewer placeholder replaces. Use `offlineBuilder` for a custom offline UI instead.
 
 ## 1.1.2
 
