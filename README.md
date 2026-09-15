@@ -41,7 +41,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ```yaml
 dependencies:
-  k_gallery: ^1.1.4
+  k_gallery: ^1.2.0
 ```
 
 ### 2. Platform Setup
@@ -49,13 +49,15 @@ dependencies:
 #### Video / Audio (media_kit)
 
 Follow the [media_kit native setup](https://github.com/media-kit/media-kit#getting-started) for your target platforms:
-- **Android**: `minSdkVersion` 16 or higher in `android/app/build.gradle`.
-- **iOS**: No extra steps beyond media_kit's own requirements.
+- **Android**: `minSdkVersion` 24 or higher in `android/app/build.gradle` (required by `webview_flutter`, which backs YouTube playback since 1.2.0).
+- **iOS**: Deployment target **13.0** or higher for this package (required by `webview_flutter`, which backs YouTube playback) — unchanged from 1.1.x. Note that Flutter raises its own iOS floor over time (Flutter 3.47 requires 15.0 and migrates existing projects automatically), so your effective minimum is whichever is higher. No extra steps beyond media_kit's own requirements.
 - **macOS / Windows / Linux**: Link the native libraries as described in the media_kit docs.
 
-#### YouTube (flutter_inappwebview)
+#### YouTube (webview_flutter)
 
-YouTube playback is WebView-based via `youtube_player_flutter`. On **iOS**, add the following to `ios/Runner/Info.plist` to allow the WebView to load YouTube content:
+YouTube playback is WebView-based via `youtube_player_flutter`, which since
+1.2.0 renders through `webview_flutter` (previously `flutter_inappwebview`).
+On **iOS**, add the following to `ios/Runner/Info.plist` to allow the WebView to load YouTube content:
 
 ```xml
 <key>NSAppTransportSecurity</key>

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../../bloc/gallery_bloc.dart';
 
@@ -41,7 +42,8 @@ mixin GalleryUIHideMixin<T extends StatefulWidget> on State<T> {
 /// - `bufferingStream != null`: media_kit path — buffering live-updates
 ///   via [StreamBuilder].
 /// - `bufferingStream == null`: synchronous mode used by callers that
-///   already drive rebuilds themselves (e.g. youtube via [AnimatedBuilder]).
+///   already drive rebuilds themselves (e.g. youtube via
+///   [YoutubeValueBuilder]).
 class GalleryCenterControls extends StatelessWidget {
   final bool isPlaying;
   final bool isReady;
@@ -255,27 +257,6 @@ class _GalleryMediaKitFullscreenButtonState extends State<GalleryMediaKitFullscr
   }
 }
 
-/// Fullscreen button for YouTube items — fixed 16:9 frame.
-class GalleryYoutubeFullscreenButton extends StatelessWidget {
-  final GalleryBloc galleryBloc;
-  final VoidCallback onTap;
-
-  const GalleryYoutubeFullscreenButton({
-    super.key,
-    required this.galleryBloc,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GalleryFullscreenButton(
-      videoAspect: 16 / 9,
-      galleryBloc: galleryBloc,
-      onTap: onTap,
-    );
-  }
-}
-
 /// Transparent overlay that toggles UI on tap. Shared across all media
 /// item types.
 class GalleryMediaTapOverlay extends StatelessWidget {
@@ -295,4 +276,134 @@ class GalleryMediaTapOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+
+/// Signature for laying out a [GalleryYoutubeSeekbar]. Receives the current
+/// [position], the video [duration], and the ready-made [slider] so each
+/// caller can arrange them to suit its own chrome.
+typedef GalleryYoutubeSeekbarLayout = Widget Function(
+  BuildContext context,
+  Duration position,
+  Duration duration,
+  Widget slider,
+);
+
+/// Seekbar for YouTube items.
+///
+/// The v10 controller no longer carries playback position on its value —
+/// position arrives on [YoutubePlayerController.videoStateStream] — so this
+/// widget owns that subscription. While the user is dragging, stream updates
+/// are ignored and the thumb follows the finger; the seek is issued once on
+/// release. Without that latch the ~10 Hz position feed fights the drag.
+class GalleryYoutubeSeekbar extends StatefulWidget {
+  final YoutubePlayerController controller;
+  final Color activeColor;
+  final Color inactiveColor;
+  final GalleryYoutubeSeekbarLayout layout;
+
+  const GalleryYoutubeSeekbar({
+    super.key,
+    required this.controller,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.layout,
+  });
+
+  @override
+  State<GalleryYoutubeSeekbar> createState() => _GalleryYoutubeSeekbarState();
+}
+
+class _GalleryYoutubeSeekbarState extends State<GalleryYoutubeSeekbar> {
+  StreamSubscription<YoutubeVideoState>? _stateSub;
+  Duration _position = Duration.zero;
+
+  /// Non-null while a drag is in flight; holds the pending position in ms.
+  double? _dragMilliseconds;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribe();
+  }
+
+  @override
+  void didUpdateWidget(GalleryYoutubeSeekbar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      _stateSub?.cancel();
+      _position = Duration.zero;
+      _dragMilliseconds = null;
+      _subscribe();
+    }
+  }
+
+  void _subscribe() {
+    _stateSub = widget.controller.videoStateStream.listen((state) {
+      if (!mounted || _dragMilliseconds != null) return;
+      if (state.position == _position) return;
+      setState(() => _position = state.position);
+    });
+  }
+
+  @override
+  void dispose() {
+    _stateSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = widget.controller.metadata.duration;
+    double max = duration.inMilliseconds.toDouble();
+    if (max <= 0) max = 1.0;
+
+    final raw = _dragMilliseconds ?? _position.inMilliseconds.toDouble();
+    final value = raw.clamp(0.0, max);
+
+    final slider = Slider(
+      value: value,
+      max: max,
+      activeColor: widget.activeColor,
+      inactiveColor: widget.inactiveColor,
+      onChangeStart: (v) => setState(() => _dragMilliseconds = v),
+      onChanged: (v) => setState(() => _dragMilliseconds = v),
+      onChangeEnd: (v) {
+        ignorePlayerCommandError(
+          widget.controller.seekTo(seconds: v / 1000, allowSeekAhead: true),
+        );
+        setState(() {
+          _position = Duration(milliseconds: v.round());
+          _dragMilliseconds = null;
+        });
+      },
+    );
+
+    return widget.layout(
+      context,
+      Duration(milliseconds: value.round()),
+      duration,
+      slider,
+    );
+  }
+}
+
+/// Fire-and-forget a YouTube player command, swallowing any failure.
+///
+/// Commands travel through the IFrame JS bridge, which queues them behind a
+/// readiness future and throws a `TimeoutException` if the player never
+/// reports in — e.g. the viewer swiped past the item while it was still
+/// loading. Nothing awaits these calls, so an unguarded one surfaces as an
+/// unhandled exception long after the widget is gone. The package guards its
+/// own teardown command the same way.
+void ignorePlayerCommandError(Future<void> command) {
+  unawaited(command.catchError((Object _, StackTrace __) {}));
+}
+
+/// Formats a duration as `m:ss`, or `h:mm:ss` past the hour.
+String formatGalleryDuration(Duration d) {
+  final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  if (d.inHours > 0) return '${d.inHours}:$minutes:$seconds';
+  return '$minutes:$seconds';
 }

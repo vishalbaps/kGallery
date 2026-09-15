@@ -7,6 +7,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../bloc/gallery_bloc.dart';
 import '../utils/image_source.dart';
+import 'media/gallery_media_internals.dart';
 
 /// Internal widget for displaying the scrollable thumbnail strip.
 class GalleryThumbnailStrip extends StatefulWidget {
@@ -331,7 +332,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
             stream: player.stream.position,
             builder: (context, snapshot) {
               return Text(
-                _formatDuration(snapshot.data ?? Duration.zero),
+                formatGalleryDuration(snapshot.data ?? Duration.zero),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               );
             },
@@ -370,7 +371,7 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
             stream: player.stream.duration,
             builder: (context, snapshot) {
               return Text(
-                _formatDuration(snapshot.data ?? Duration.zero),
+                formatGalleryDuration(snapshot.data ?? Duration.zero),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               );
             },
@@ -386,49 +387,25 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          final position = controller.value.position;
-          final duration = controller.metadata.duration;
-          double max = duration.inMilliseconds.toDouble();
-          double val = position.inMilliseconds.toDouble();
-          if (max <= 0) max = 1.0;
-          if (val < 0) val = 0.0;
-          if (val > max) val = max;
-          return Row(
-            children: [
-              Text(
-                _formatDuration(position),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-              Expanded(
-                child: Slider(
-                  value: val,
-                  max: max,
-                  activeColor: theme.seekbarActiveColor,
-                  inactiveColor: theme.seekbarInactiveColor,
-                  onChanged: (value) => controller.seekTo(
-                    Duration(milliseconds: value.toInt()),
-                  ),
-                ),
-              ),
-              Text(
-                _formatDuration(duration),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            ],
-          );
-        },
+      child: GalleryYoutubeSeekbar(
+        controller: controller,
+        activeColor: theme.seekbarActiveColor,
+        inactiveColor: theme.seekbarInactiveColor,
+        layout: (context, position, duration, slider) => Row(
+          children: [
+            Text(
+              formatGalleryDuration(position),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+            Expanded(child: slider),
+            Text(
+              formatGalleryDuration(duration),
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    if (d.inHours > 0) return '${d.inHours}:$minutes:$seconds';
-    return '$minutes:$seconds';
   }
 
   Widget _buildThumbnail(GalleryItem item, _AdaptiveDimensions dimensions) {
@@ -444,9 +421,9 @@ class _GalleryThumbnailStripState extends State<GalleryThumbnailStrip> {
         ? thumbUrl
         : (item.type == GalleryItemType.image && url.isNotEmpty ? url : null);
     if (effectiveImageUrl == null && item.type == GalleryItemType.youtube) {
-      final id = YoutubePlayer.convertUrlToId(url);
+      final id = YoutubePlayerController.convertUrlToId(url);
       if (id != null) {
-        effectiveImageUrl = YoutubePlayer.getThumbnail(videoId: id);
+        effectiveImageUrl = YoutubePlayerController.getThumbnail(videoId: id);
       }
     }
 

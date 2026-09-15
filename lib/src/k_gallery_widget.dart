@@ -398,7 +398,17 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   /// underlying WKWebView's audio session playing after the route (and the
   /// WebView) is torn down, so the video keeps playing in the background.
   Future<void> _dismissAfterSilencingYoutube(YoutubePlayerController? youtubeController,) async {
-    youtubeController?.pause();
+    // A back gesture while the player is fullscreen should only leave
+    // fullscreen. The player package registers its own PopScope for this, but
+    // this route's PopScope already blocked the pop (canPop is false whenever a
+    // controller is live), so handle it here rather than let it fall through
+    // to dismissing the gallery.
+    if (youtubeController != null &&
+        youtubeController.value.fullScreenOption.enabled) {
+      youtubeController.exitFullScreen();
+      return;
+    }
+    youtubeController?.pauseVideo();
     youtubeController?.mute();
     await Future<void>.delayed(const Duration(milliseconds: 250));
     if (!mounted) return;
