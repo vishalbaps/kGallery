@@ -369,7 +369,9 @@ class _GalleryYoutubeSeekbarState extends State<GalleryYoutubeSeekbar> {
       onChangeStart: (v) => setState(() => _dragMilliseconds = v),
       onChanged: (v) => setState(() => _dragMilliseconds = v),
       onChangeEnd: (v) {
-        widget.controller.seekTo(seconds: v / 1000, allowSeekAhead: true);
+        ignorePlayerCommandError(
+          widget.controller.seekTo(seconds: v / 1000, allowSeekAhead: true),
+        );
         setState(() {
           _position = Duration(milliseconds: v.round());
           _dragMilliseconds = null;
@@ -384,6 +386,18 @@ class _GalleryYoutubeSeekbarState extends State<GalleryYoutubeSeekbar> {
       slider,
     );
   }
+}
+
+/// Fire-and-forget a YouTube player command, swallowing any failure.
+///
+/// Commands travel through the IFrame JS bridge, which queues them behind a
+/// readiness future and throws a `TimeoutException` if the player never
+/// reports in — e.g. the viewer swiped past the item while it was still
+/// loading. Nothing awaits these calls, so an unguarded one surfaces as an
+/// unhandled exception long after the widget is gone. The package guards its
+/// own teardown command the same way.
+void ignorePlayerCommandError(Future<void> command) {
+  unawaited(command.catchError((Object _, StackTrace __) {}));
 }
 
 /// Formats a duration as `m:ss`, or `h:mm:ss` past the hour.

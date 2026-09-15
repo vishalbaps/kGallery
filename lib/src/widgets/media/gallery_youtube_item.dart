@@ -162,7 +162,8 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     if (!_startedPlayback && v.playerState != PlayerState.unknown) {
       _startedPlayback = true;
       if (widget.galleryBloc.state.currentIndex == widget.index) {
-        _controller?.playVideo();
+        final c = _controller;
+        if (c != null) ignorePlayerCommandError(c.playVideo());
       }
     }
 
@@ -223,8 +224,14 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     // this is a best-effort stop for the other teardown paths (e.g. swiping to
     // another item), since on iPadOS disposing the WKWebView alone does not
     // reliably halt its audio session.
-    c.pauseVideo();
-    unawaited(c.close());
+    // Only meaningful once the player has reported in. A command issued before
+    // then queues behind the JS bridge's readiness future and throws after 30s,
+    // which is how swiping past a still-loading item produced an unhandled
+    // TimeoutException.
+    if (c.value.playerState != PlayerState.unknown) {
+      ignorePlayerCommandError(c.pauseVideo());
+    }
+    ignorePlayerCommandError(c.close());
 
     final notifier = widget.activeYoutubeNotifier;
     if (fromDispose) {
@@ -241,9 +248,9 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     final c = _controller;
     if (c == null) return;
     if (c.value.playerState == PlayerState.playing) {
-      c.pauseVideo();
+      ignorePlayerCommandError(c.pauseVideo());
     } else {
-      c.playVideo();
+      ignorePlayerCommandError(c.playVideo());
     }
   }
 
