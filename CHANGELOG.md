@@ -1,3 +1,15 @@
+## 1.2.0
+
+- **Breaking (tooling)**: Minimum versions raised to **Flutter 3.44** / **Dart SDK 3.12**. This is required by `cached_network_image` 4.x and `shimmer` 4.x, not by kGallery itself.
+- **Breaking (deps)**: `cached_network_image` `^3.4.1` → `^4.0.0`, `shimmer` `^3.0.0` → `^4.0.0`, `youtube_player_flutter` `^9.1.3` → `^10.0.1`. `flutter_cache_manager` stays on `^3.4.1` — `cached_network_image` 4.x still resolves to it, so existing pins and forks are unaffected.
+- **Breaking (Android)**: `minSdkVersion` must now be **24** or higher, required by `webview_flutter`. iOS is unaffected by this release: the package's own floor stays at deployment target **13.0** (`webview_flutter`). Flutter's own iOS minimum is separate and rises with the SDK — 3.47 mandates 15.0 and migrates projects automatically — so the effective minimum is whichever is higher.
+- **Changed**: The YouTube player's engine is now `webview_flutter` (via `youtube_player_iframe` 6.x) instead of `flutter_inappwebview`, following the `youtube_player_flutter` 10.0.0 rewrite. `flutter_inappwebview` is no longer a transitive dependency.
+- **Changed**: YouTube fullscreen no longer pushes a separate route. The player package now handles fullscreen internally against a single WebView, so playback continues across the transition instead of re-creating the view and seeking back to the saved position. The gallery still applies the landscape orientation and immersive system chrome, and still renders its own timer, seekbar, and exit button, so the fullscreen UI is unchanged.
+- **Fix**: Scrubbing the YouTube seekbar no longer fights the position feed. v10 reports position roughly every 100ms; the thumb now follows the drag and issues a single seek on release.
+- **Fix**: On tablets and in landscape, the gallery's own chrome (top bar, title/description panel, seekbar, thumbnail strip) is no longer hidden behind a YouTube video. v10 renders the WebView in an `OverlayPortal` that paints above the route, and a 16:9 box at those sizes covers nearly the whole screen; the player is now laid out inside the chrome's bands while the chrome is on screen, and goes full-bleed again once it hides.
+- **Internal**: YouTube controls (tap-to-toggle, center play/pause, fullscreen button) moved into the player's own overlay, for the same reason — controls placed in the gallery's own `Stack` would have been hidden behind the video.
+- **No API change**: `GalleryItem`, `GalleryItemType.youtube`, `GalleryTheme`, and every `KGallery` parameter are unchanged. Upgrading is a constraint bump plus the Flutter/Dart minimum.
+
 ## 1.1.4
 
 - **Breaking**: Removed `noInternetMessage` (from `KGallery`, `KGallery.show(...)`, and `GalleryTheme`). It only drove the old no-connectivity SnackBar, which the in-viewer offline placeholder (added in 1.1.3) replaces. Use `offlineBuilder` for a custom offline UI instead.

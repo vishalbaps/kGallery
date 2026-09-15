@@ -99,7 +99,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
         return Image.memory(
           base64Decode(source.split(';base64,').last),
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => typeIconFallback(),
+          errorBuilder: (_, _, _) => typeIconFallback(),
         );
       } catch (_) {
         return typeIconFallback();

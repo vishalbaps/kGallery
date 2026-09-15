@@ -1,10 +1,10 @@
 # kGallery Flutter Package — Project Reference
 
-**Package**: `k_gallery` v1.0.1  
+**Package**: `k_gallery` v1.2.0  
 **Type**: Flutter package (pub.dev publishable)  
 **Purpose**: Telegram-style media gallery viewer (images, video, audio) with pinch-zoom, thumbnail strip, swipe-dismiss, text overlay  
 **Repo**: https://github.com/vishalbaps/kGallery  
-**Requirements**: Flutter >=3.10.0, Dart SDK >=3.0.0 <4.0.0
+**Requirements**: Flutter >=3.44.0, Dart SDK ^3.12.0
 
 ---
 
@@ -49,11 +49,14 @@ kGallery/
 | `freezed_annotation` | ^3.1.0 | Immutable model annotations |
 | `extended_image` | ^10.0.1 | Image with pinch-zoom + gesture support |
 | `json_annotation` | ^4.11.0 | JSON serialization annotations |
-| `shimmer` | ^3.0.0 | Loading shimmer for thumbnails |
+| `shimmer` | ^4.0.0 | Loading shimmer for thumbnails |
 | `media_kit` | ^1.2.6 | Video/audio playback |
 | `media_kit_video` | ^2.0.1 | Video widget |
 | `media_kit_libs_video` | ^1.0.7 | Media codecs |
 | `connectivity_plus` | ^7.1.1 | Internet connectivity check |
+| `cached_network_image` | ^4.0.0 | Network image loading + caching |
+| `flutter_cache_manager` | ^3.4.1 | Cache backend for the above |
+| `youtube_player_flutter` | ^10.0.1 | YouTube playback (webview_flutter / IFrame API) |
 
 **Dev**: `build_runner`, `freezed`, `json_serializable`, `flutter_lints`
 
