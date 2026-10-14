@@ -54,6 +54,7 @@ kGallery/
 | `media_kit_video` | ^2.0.1 | Video widget |
 | `media_kit_libs_video` | ^1.0.7 | Media codecs |
 | `connectivity_plus` | ^7.1.1 | Internet connectivity check |
+| `wakelock_plus` | ^1.2.0 | Keep screen on while a video plays |
 
 **Dev**: `build_runner`, `freezed`, `json_serializable`, `flutter_lints`
 
@@ -63,7 +64,8 @@ kGallery/
 
 ### `KGallery` (main widget)
 - **Required**: `List<GalleryItem> contentList`, `int initialIndex`
-- **Optional**: `progressWidget`, `thumbProgressWidget`, `enableZoom` (true), `enableSwipeToDismiss` (true), `enableHapticFeedback` (true), `leading`, `title`, `noInternetMessage`, `offlineBuilder` (`GalleryOfflineBuilder?`), `onIndexChanged(int)`, `onClose(int)`, `theme`, `actionMenuBuilder(BuildContext, int, List<GalleryItem>)`, `cacheManager` (`BaseCacheManager?`), `memCacheWidth` (`int?`)
+- **Optional**: `progressWidget`, `thumbProgressWidget`, `enableZoom` (true), `enableSwipeToDismiss` (true), `enableHapticFeedback` (true), `leading`, `title`, `noInternetMessage`, `offlineBuilder` (`GalleryOfflineBuilder?`), `onIndexChanged(int)`, `onClose(int)`, `theme`, `actionMenuBuilder(BuildContext, int, List<GalleryItem>)`, `cacheManager` (`BaseCacheManager?`), `memCacheWidth` (`int?`), `keepScreenOnWhilePlaying` (true)
+- **Screen wakelock**: `GalleryWakelock` (`lib/src/utils/gallery_wakelock.dart`, internal) is the only code that calls `WakelockPlus`: a static owner set where each playing video/YouTube item acquires with its `State` as owner and releases on pause/end/error/deactivate/dispose; `KGallery.dispose` calls `releaseAll()` as a safety net. media_kit's `Video` is built with `wakelock: false` because its own static counter would disable a wakelock a YouTube item still needs. Never disables a wakelock the host already held. YouTube uses `youtubeIsActivelyPlaying()` (v9 leaves `isPlaying` true after end/error) plus a timed hold across the fullscreen WebView swap. Tests: `test/gallery_wakelock_test.dart` (fake `WakelockPlusPlatformInterface`).
 - **Offline placeholder**: When a remote item (image/video/audio/YouTube) can't load while offline, the viewer shows `GalleryOfflineView` (icon + title + subtitle, adapts to dark/light background) — or a custom widget via `offlineBuilder`. No retry button; the item reloads automatically when revisited after connectivity returns. Backed by `ConnectivityService` (singleton over `connectivity_plus`, `lib/src/utils/connectivity_service.dart`) and BLoC `offlineItems` state. `ConnectivityService`, `GalleryOfflineView`, and the `GalleryOfflineBuilder` typedef are re-exported from `lib/k_gallery.dart`.
 - **Network image caching**: `cacheManager` is forwarded to `CachedNetworkImage` for all network images (full-screen viewer, thumbnail strip, audio artwork). `memCacheWidth` caps the in-memory bitmap width for full-screen images only; thumbnails use a fixed 320px decode cap (`cacheWidth` for base64, `memCacheWidth` for network). `BaseCacheManager`/`CacheManager`/`Config`/`DefaultCacheManager` are re-exported from `lib/k_gallery.dart`. Plumbing: `KGallery` → `GalleryImageViewer` → `GalleryImageItem`/`GalleryAudioItem` and `KGallery` → `GalleryThumbnailStrip`, all bottoming out in `galleryImage()` in `lib/src/utils/image_source.dart`.
 - **Static**: `KGallery.ensureInitialized()` — must call before `runApp()` for media_kit

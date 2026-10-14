@@ -9,6 +9,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'bloc/gallery_bloc.dart';
 import 'models/gallery_item.dart';
 import 'models/gallery_theme.dart';
+import 'utils/gallery_wakelock.dart';
 import 'widgets/gallery/gallery_offline_view.dart';
 import 'widgets/gallery_image_viewer.dart';
 import 'widgets/gallery_thumbnail_strip.dart';
@@ -108,6 +109,16 @@ class KGallery extends StatefulWidget {
   /// always use a small fixed decode size.
   final int? memCacheWidth;
 
+  /// Whether the device screen stays on (no dimming or auto-lock) while a
+  /// video or YouTube item is playing. Defaults to `true`.
+  ///
+  /// The screen returns to its normal auto-lock timeout as soon as playback
+  /// pauses, ends, fails, the item is swiped away, or the gallery closes.
+  /// Images and audio never keep the screen on. A screen wakelock the host app
+  /// already holds is left untouched. Set to `false` to always use the
+  /// device's normal auto-lock, even while a video plays.
+  final bool keepScreenOnWhilePlaying;
+
   /// Creates a [KGallery] widget.
   ///
   /// [contentList] must not be empty.
@@ -130,6 +141,7 @@ class KGallery extends StatefulWidget {
     this.actionMenuBuilder,
     this.cacheManager,
     this.memCacheWidth,
+    this.keepScreenOnWhilePlaying = true,
   })
       : assert(contentList.length > 0, 'contentList must not be empty'),
         assert(
@@ -193,6 +205,7 @@ class KGallery extends StatefulWidget {
         )? actionMenuBuilder,
     BaseCacheManager? cacheManager,
     int? memCacheWidth,
+    bool keepScreenOnWhilePlaying = true,
     Duration transitionDuration = const Duration(milliseconds: 250),
   }) {
     return Navigator.of(context).push<int>(
@@ -223,6 +236,7 @@ class KGallery extends StatefulWidget {
                 actionMenuBuilder: actionMenuBuilder,
                 cacheManager: cacheManager,
                 memCacheWidth: memCacheWidth,
+                keepScreenOnWhilePlaying: keepScreenOnWhilePlaying,
               ),
             ),
       ),
@@ -279,6 +293,10 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // Media items release the wakelock as they are disposed; this covers any
+    // missed release for every way of closing the gallery (back button,
+    // swipe-to-dismiss, programmatic pop).
+    GalleryWakelock.releaseAll();
     _heightAnimController?.dispose();
     _pageController.dispose();
     _galleryBloc.close();
@@ -343,6 +361,8 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                             theme: _effectiveTheme,
                             cacheManager: widget.cacheManager,
                             memCacheWidth: widget.memCacheWidth,
+                            keepScreenOnWhilePlaying:
+                                widget.keepScreenOnWhilePlaying,
                           ),
 
                           _GalleryTopBar(

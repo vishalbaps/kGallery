@@ -46,6 +46,9 @@ class GalleryImageViewer extends StatefulWidget {
   /// In-memory decode width cap forwarded to full-screen network images.
   final int? memCacheWidth;
 
+  /// Whether video and YouTube items keep the screen on while playing.
+  final bool keepScreenOnWhilePlaying;
+
   const GalleryImageViewer({
     super.key,
     required this.pageController,
@@ -59,6 +62,7 @@ class GalleryImageViewer extends StatefulWidget {
     this.theme,
     this.cacheManager,
     this.memCacheWidth,
+    this.keepScreenOnWhilePlaying = true,
   });
 
   @override
@@ -387,6 +391,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
                 galleryBloc: bloc,
                 offlineBuilder: widget.offlineBuilder,
                 theme: widget.theme,
+                keepScreenOnWhilePlaying: widget.keepScreenOnWhilePlaying,
               ),
         );
       case GalleryItemType.audio:
@@ -417,6 +422,7 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
                 galleryBloc: bloc,
                 offlineBuilder: widget.offlineBuilder,
                 theme: widget.theme,
+                keepScreenOnWhilePlaying: widget.keepScreenOnWhilePlaying,
               ),
         );
     }
