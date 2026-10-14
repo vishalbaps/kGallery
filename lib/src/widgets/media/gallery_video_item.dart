@@ -9,6 +9,7 @@ import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
 import '../../utils/connectivity_service.dart';
+import '../../utils/gallery_wakelock.dart';
 import '../gallery/gallery_offline_view.dart';
 import 'gallery_media_internals.dart';
 
@@ -23,6 +24,9 @@ class GalleryVideoItem extends StatefulWidget {
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
+  /// Whether to keep the screen on while this video is playing.
+  final bool keepScreenOnWhilePlaying;
+
   const GalleryVideoItem({
     super.key,
     required this.item,
@@ -31,6 +35,7 @@ class GalleryVideoItem extends StatefulWidget {
     required this.galleryBloc,
     this.offlineBuilder,
     this.theme,
+    this.keepScreenOnWhilePlaying = true,
   });
 
   @override
@@ -62,10 +67,13 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
     if (_player != null) return;
     final p = Player();
     _player = p;
-    _videoController = VideoController(p);
+    final controller = VideoController(p);
+    _videoController = controller;
+    controller.rect.addListener(_syncWakelock);
 
     _playingSubscription = p.stream.playing.listen((isPlaying) {
       if (!mounted) return;
+      _syncWakelock();
       final state = widget.galleryBloc.state;
       if (isPlaying && state.isUIVisible && state.currentIndex == widget.index) {
         startHideUITimer(widget.galleryBloc, widget.index);
@@ -78,6 +86,7 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
       if (!mounted || !completed) return;
       p.seek(Duration.zero);
       p.pause();
+      GalleryWakelock.release(this);
       cancelHideUITimer();
       final state = widget.galleryBloc.state;
       if (!state.isUIVisible && state.currentIndex == widget.index) {
@@ -95,6 +104,7 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
 
   void _deactivate({bool fromDispose = false}) {
     cancelHideUITimer();
+    GalleryWakelock.release(this);
     final p = _player;
     if (p == null) return;
 
@@ -102,6 +112,7 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
     _playingSubscription = null;
     _completedSubscription?.cancel();
     _completedSubscription = null;
+    _videoController?.rect.removeListener(_syncWakelock);
     _player = null;
     _videoController = null;
     p.dispose();
@@ -138,6 +149,26 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
     }
   }
 
+  /// Keeps the screen on while the video is playing and has painted its first
+  /// frame. media_kit reports `playing` as soon as `play()` is called, before
+  /// anything loads, so the first-frame check keeps a stream that never loads
+  /// (behind the loader) from holding the screen on.
+  ///
+  /// The inline [Video] stays mounted under media_kit's fullscreen route, so
+  /// this keeps driving the wakelock while in fullscreen.
+  void _syncWakelock() {
+    final p = _player;
+    final keepOn = widget.keepScreenOnWhilePlaying &&
+        p != null &&
+        p.state.playing &&
+        _videoController?.rect.value != null;
+    if (keepOn) {
+      GalleryWakelock.acquire(this);
+    } else {
+      GalleryWakelock.release(this);
+    }
+  }
+
   void _setOffline(bool offline) {
     widget.galleryBloc
         .add(GallerySetItemOffline(index: widget.index, offline: offline));
@@ -158,6 +189,14 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
     await _videoKey.currentState?.enterFullscreen();
     if (mounted && _currentlyPlaying) {
       startHideUITimer(widget.galleryBloc, widget.index);
+    }
+  }
+
+  @override
+  void didUpdateWidget(GalleryVideoItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keepScreenOnWhilePlaying != widget.keepScreenOnWhilePlaying) {
+      _syncWakelock();
     }
   }
 
@@ -281,6 +320,9 @@ class _GalleryVideoItemState extends State<GalleryVideoItem> with GalleryUIHideM
         controller: controller,
         controls: _fullscreenControlsBuilder,
         fit: BoxFit.contain,
+        // kGallery owns the wakelock (see GalleryWakelock): media_kit's own
+        // counter would turn it off under a playing YouTube item.
+        wakelock: false,
       ),
     );
   }

@@ -41,7 +41,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ```yaml
 dependencies:
-  k_gallery: ^1.1.4
+  k_gallery: ^1.1.5
 ```
 
 ### 2. Platform Setup
@@ -135,6 +135,21 @@ GalleryItem(
 
 > Your use of YouTube content is governed by the [YouTube Terms of Service](https://www.youtube.com/t/terms). Respect creators' embedding settings.
 
+### Keeping the screen on during playback
+
+While a video or YouTube item is playing (inline or fullscreen), the gallery keeps the device screen from dimming or auto-locking. The screen returns to its normal auto-lock timeout as soon as playback pauses, ends, or fails, the item is swiped away, or the gallery closes. Images and audio never keep the screen on.
+
+This uses [`wakelock_plus`](https://pub.dev/packages/wakelock_plus) and needs no extra platform setup. A wakelock your app already holds when the gallery starts playing is left untouched. To opt out and always use the device's normal auto-lock:
+
+```dart
+KGallery.show(
+  context,
+  contentList: items,
+  initialIndex: 0,
+  keepScreenOnWhilePlaying: false,
+);
+```
+
 ## ⬆️ Migrating to 1.1.0
 
 1.1.0 introduces **no breaking API changes** — base64 image support, the
@@ -187,6 +202,7 @@ Navigator.of(context).push(
 | `actionMenuBuilder` | `Widget Function(BuildContext, int, List<GalleryItem>)?` | — | Builds a custom action menu in the top bar for the current item. |
 | `cacheManager` | `BaseCacheManager?` | shared default | Cache manager for network images (full-screen, thumbnails, audio artwork). Pass your own `CacheManager(Config(...))` to share a cache with the rest of your app or control the disk-cache policy. Re-exported from `package:k_gallery`. |
 | `memCacheWidth` | `int?` | — | Caps the in-memory bitmap width for full-screen network images (`CachedNetworkImage.memCacheWidth`) to reduce memory for very large sources. Thumbnails use their own small fixed decode size. |
+| `keepScreenOnWhilePlaying` | `bool` | `true` | Keeps the screen from dimming or auto-locking while a video or YouTube item is playing. Released on pause, end, swipe away, and close. Set to `false` to always use the device's normal auto-lock. |
 
 ### `GalleryTheme` fields
 

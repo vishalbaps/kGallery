@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/material.dart';
@@ -8,9 +9,23 @@ import '../../bloc/gallery_bloc.dart';
 import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
 import '../../utils/connectivity_service.dart';
+import '../../utils/gallery_wakelock.dart';
 import '../gallery/gallery_offline_view.dart';
 import '../gallery_youtube_fullscreen_route.dart';
 import 'gallery_media_internals.dart';
+
+/// Whether a YouTube player in state [v] should keep the screen on.
+///
+/// youtube_player_flutter sets `isPlaying` only on the IFrame's "playing" and
+/// "paused" states; ending the video or hitting a player error leaves it
+/// `true`. Those are checked explicitly, and the player must be ready so the
+/// loader never holds the screen on.
+@visibleForTesting
+bool youtubeIsActivelyPlaying(YoutubePlayerValue v) =>
+    v.isReady &&
+    v.isPlaying &&
+    v.playerState != PlayerState.ended &&
+    v.errorCode == 0;
 
 /// Internal widget rendering a single YouTube item via
 /// `youtube_player_flutter`. Owns the [YoutubePlayerController] lifecycle
@@ -27,6 +42,9 @@ class GalleryYoutubeItem extends StatefulWidget {
   final GalleryOfflineBuilder? offlineBuilder;
   final GalleryTheme? theme;
 
+  /// Whether to keep the screen on while this video is playing.
+  final bool keepScreenOnWhilePlaying;
+
   const GalleryYoutubeItem({
     super.key,
     required this.item,
@@ -35,6 +53,7 @@ class GalleryYoutubeItem extends StatefulWidget {
     required this.galleryBloc,
     this.offlineBuilder,
     this.theme,
+    this.keepScreenOnWhilePlaying = true,
   });
 
   @override
@@ -59,6 +78,14 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
 
   /// Prevents re-entrant activation while the async connectivity check runs.
   bool _activating = false;
+
+  /// Upper bound on how long a fullscreen WebView swap may hold the wakelock
+  /// while the new WebView loads.
+  static const Duration _swapWakelockTimeout = Duration(seconds: 15);
+
+  /// Non-null while the wakelock is held across a WebView swap (see
+  /// [_holdWakelockThroughSwap]).
+  Timer? _swapWakelockHold;
 
   bool get _currentlyPlaying => _controller?.value.isPlaying == true;
 
@@ -181,10 +208,56 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
         cancelHideUITimer();
       }
     }
+
+    // Re-evaluated on every tick rather than only when isPlaying flips:
+    // ending and errors don't flip isPlaying (see youtubeIsActivelyPlaying),
+    // and acquire/release are no-ops when nothing changed.
+    _syncWakelock();
+  }
+
+  void _syncWakelock() {
+    final v = _controller?.value;
+    // A ready player means the new WebView (if one was swapped in) is now
+    // reporting its own play state, so it takes over from the swap hold.
+    if (v != null && v.isReady) _endSwapHold();
+    final keepOn = widget.keepScreenOnWhilePlaying &&
+        v != null &&
+        (_swapWakelockHold != null || youtubeIsActivelyPlaying(v));
+    if (keepOn) {
+      GalleryWakelock.acquire(this);
+    } else {
+      GalleryWakelock.release(this);
+    }
+  }
+
+  /// Keeps the wakelock held while the WebView is swapped for fullscreen
+  /// enter or exit. The player reports not-ready until the new WebView loads,
+  /// which on its own would drop the wakelock for that gap and could let the
+  /// screen sleep mid-video. The hold carries over if a swap starts while
+  /// another is still loading, ends as soon as the new WebView is ready, and
+  /// expires after [_swapWakelockTimeout] so a WebView that never loads can't
+  /// keep the screen on behind the loader.
+  ///
+  /// Must be called before the controller is marked not-ready.
+  void _holdWakelockThroughSwap(YoutubePlayerController c) {
+    final wasHolding = _swapWakelockHold != null;
+    _endSwapHold();
+    if (!wasHolding && !youtubeIsActivelyPlaying(c.value)) return;
+    _swapWakelockHold = Timer(_swapWakelockTimeout, () {
+      _swapWakelockHold = null;
+      if (mounted) _syncWakelock();
+    });
+  }
+
+  void _endSwapHold() {
+    _swapWakelockHold?.cancel();
+    _swapWakelockHold = null;
   }
 
   void _deactivate({bool fromDispose = false}) {
     cancelHideUITimer();
+    _endSwapHold();
+    GalleryWakelock.release(this);
     final c = _controller;
     if (c == null) return;
 
@@ -231,6 +304,7 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     _resumePosition = c.value.position;
     _previousIsReady = false;
     _previousIsPlaying = false;
+    _holdWakelockThroughSwap(c);
     c.updateValue(c.value.copyWith(isReady: false));
     _isFullscreen.value = true;
 
@@ -248,9 +322,18 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
         _resumePosition = c.value.position;
         _previousIsReady = false;
         _previousIsPlaying = false;
+        _holdWakelockThroughSwap(c);
         c.updateValue(c.value.copyWith(isReady: false));
         _isFullscreen.value = false;
       }
+    }
+  }
+
+  @override
+  void didUpdateWidget(GalleryYoutubeItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.keepScreenOnWhilePlaying != widget.keepScreenOnWhilePlaying) {
+      _syncWakelock();
     }
   }
 

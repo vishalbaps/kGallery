@@ -1,3 +1,8 @@
+## 1.1.5
+
+- **Fix**: Keep the screen on while a video or YouTube item is playing; release it on pause, end, swipe away and close. Adds `keepScreenOnWhilePlaying` (default `true`). Previously a playing YouTube item let the screen sleep after the normal auto-lock timeout, which also stopped playback. Applies inline and in fullscreen, on Android and iOS. Images and audio never keep the screen on, and a wakelock the host app already holds is never turned off.
+- **Deps**: Adds `wakelock_plus: ^1.2.0` as a direct dependency. It was already a transitive dependency through `media_kit_video`, so no new platform setup is needed.
+
 ## 1.1.4
 
 - **Breaking**: Removed `noInternetMessage` (from `KGallery`, `KGallery.show(...)`, and `GalleryTheme`). It only drove the old no-connectivity SnackBar, which the in-viewer offline placeholder (added in 1.1.3) replaces. Use `offlineBuilder` for a custom offline UI instead.
