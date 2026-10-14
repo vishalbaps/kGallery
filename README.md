@@ -32,6 +32,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 - 📝 **Draggable Info Panel**: Overlays for titles and descriptions that can be expanded or collapsed.
 - 📱 **Adaptive Layout**: Optimized for both mobile phones and tablets.
 - 🎬 **Video/Audio Controls**: Integrated seekbar and playback controls powered by `media_kit`.
+- 🔆 **Screen Stays On During Playback**: While a video or YouTube item plays, the screen won't dim or auto-lock; it returns to normal as soon as playback pauses, ends, or the gallery closes. Opt out with `keepScreenOnWhilePlaying: false`.
 - 🌐 **Connectivity Aware**: Checks for internet before playing remote media, and shows a theme-aware **offline placeholder** when a remote item can't load — auto-reloading when the user returns to it. Fully replaceable via `offlineBuilder`.
 - 🎨 **Fully Customizable**: Inject your own progress widgets, action menus, and theme colors.
 
@@ -49,8 +50,8 @@ dependencies:
 #### Video / Audio (media_kit)
 
 Follow the [media_kit native setup](https://github.com/media-kit/media-kit#getting-started) for your target platforms:
-- **Android**: `minSdkVersion` 16 or higher in `android/app/build.gradle`.
-- **iOS**: No extra steps beyond media_kit's own requirements.
+- **Android**: `minSdkVersion` 19 or higher in `android/app/build.gradle` (required by the YouTube WebView, `flutter_inappwebview`).
+- **iOS**: Deployment target 12.0 or higher (also required by `flutter_inappwebview`). No extra steps beyond media_kit's own requirements.
 - **macOS / Windows / Linux**: Link the native libraries as described in the media_kit docs.
 
 #### YouTube (flutter_inappwebview)
@@ -202,7 +203,7 @@ Navigator.of(context).push(
 | `actionMenuBuilder` | `Widget Function(BuildContext, int, List<GalleryItem>)?` | — | Builds a custom action menu in the top bar for the current item. |
 | `cacheManager` | `BaseCacheManager?` | shared default | Cache manager for network images (full-screen, thumbnails, audio artwork). Pass your own `CacheManager(Config(...))` to share a cache with the rest of your app or control the disk-cache policy. Re-exported from `package:k_gallery`. |
 | `memCacheWidth` | `int?` | — | Caps the in-memory bitmap width for full-screen network images (`CachedNetworkImage.memCacheWidth`) to reduce memory for very large sources. Thumbnails use their own small fixed decode size. |
-| `keepScreenOnWhilePlaying` | `bool` | `true` | Keeps the screen from dimming or auto-locking while a video or YouTube item is playing. Released on pause, end, swipe away, and close. Set to `false` to always use the device's normal auto-lock. |
+| `keepScreenOnWhilePlaying` | `bool` | `true` | Keeps the screen from dimming or auto-locking while a video or YouTube item is playing (inline or fullscreen). Released on pause, end, failure, swipe away, and close. Set to `false` to always use the device's normal auto-lock. |
 
 ### `GalleryTheme` fields
 
