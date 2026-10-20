@@ -1,3 +1,12 @@
+## 1.1.6
+
+- **Fix**: YouTube videos no longer start with captions on. Captions are now off by default and stay off even when the uploader set a default caption track or the WebView remembered an earlier caption choice. Previously the player only asked YouTube not to *force* captions, so they still appeared for those videos and there was no way to turn them off.
+- **New**: An opt-in **CC button** on YouTube items (`showYoutubeCaptionToggle: true`), next to the fullscreen button and in the fullscreen controls, lets the viewer turn captions on or off. Filled icon while on, outlined while off; labelled "Captions on" / "Captions off" for screen readers. It auto-hides with the other controls. The choice lasts for the gallery session: it carries over fullscreen and swiping to other YouTube items, and the next gallery starts from the default again.
+- **New**: `youtubeCaptionsEnabled` (default `false`), `youtubeCaptionLanguage` (default `'en'`), and `showYoutubeCaptionToggle` (default `false`) on `KGallery` and `KGallery.show(...)`. Existing callers get captions off and no CC button without code changes; pass `true` to either to opt in. When the video has no track in the preferred language, YouTube's default track is shown instead.
+- **Note**: When enabled, the CC button shows for every YouTube video. YouTube's player API doesn't list auto-generated caption tracks, so it can't tell a video with no captions from one that has only auto-generated captions, and hiding the button would remove it from the latter.
+- **Example**: Adds a captioned YouTube item (Koalas 101, Nat Geo Wild) and an app bar menu to choose whether captions start on and whether the CC button is shown. The demo turns the CC button on by default to show it off.
+- **Example**: Replaces the demo photos, which no longer loaded because loremflickr.com returns server errors, with 93 fixed nature photos from Picsum (picsum.photos). The video thumbnails, which also failed, now use Picsum nature photos, and the YouTube items show their YouTube thumbnails in the grid. The bee video is no longer mislabelled "Big Buck Bunny".
+
 ## 1.1.5
 
 - **Fix**: Keep the screen on while a video or YouTube item is playing; release it on pause, end, swipe away and close. Adds `keepScreenOnWhilePlaying` (default `true`). Previously a playing YouTube item let the screen sleep after the normal auto-lock timeout, which also stopped playback. Applies inline and in fullscreen, on Android and iOS. Images and audio never keep the screen on, and a wakelock the host app already holds is never turned off.

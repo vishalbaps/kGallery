@@ -49,6 +49,15 @@ class GalleryImageViewer extends StatefulWidget {
   /// Whether video and YouTube items keep the screen on while playing.
   final bool keepScreenOnWhilePlaying;
 
+  /// Gallery-wide YouTube caption state, shared by every YouTube item.
+  final ValueNotifier<bool> youtubeCaptionsNotifier;
+
+  /// Preferred YouTube caption language used when captions are on.
+  final String youtubeCaptionLanguage;
+
+  /// Whether YouTube items show a CC button.
+  final bool showYoutubeCaptionToggle;
+
   const GalleryImageViewer({
     super.key,
     required this.pageController,
@@ -57,12 +66,15 @@ class GalleryImageViewer extends StatefulWidget {
     required this.enableSwipeToDismiss,
     required this.activePlayerNotifier,
     required this.activeYoutubeNotifier,
+    required this.youtubeCaptionsNotifier,
     this.onClose,
     this.offlineBuilder,
     this.theme,
     this.cacheManager,
     this.memCacheWidth,
     this.keepScreenOnWhilePlaying = true,
+    this.youtubeCaptionLanguage = 'en',
+    this.showYoutubeCaptionToggle = false,
   });
 
   @override
@@ -423,6 +435,9 @@ class _GalleryImageViewerState extends State<GalleryImageViewer> with SingleTick
                 offlineBuilder: widget.offlineBuilder,
                 theme: widget.theme,
                 keepScreenOnWhilePlaying: widget.keepScreenOnWhilePlaying,
+                youtubeCaptionsNotifier: widget.youtubeCaptionsNotifier,
+                youtubeCaptionLanguage: widget.youtubeCaptionLanguage,
+                showYoutubeCaptionToggle: widget.showYoutubeCaptionToggle,
               ),
         );
     }

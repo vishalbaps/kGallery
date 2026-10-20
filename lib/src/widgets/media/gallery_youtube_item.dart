@@ -10,6 +10,7 @@ import '../../models/gallery_item.dart';
 import '../../models/gallery_theme.dart';
 import '../../utils/connectivity_service.dart';
 import '../../utils/gallery_wakelock.dart';
+import '../../utils/youtube_captions.dart';
 import '../gallery/gallery_offline_view.dart';
 import '../gallery_youtube_fullscreen_route.dart';
 import 'gallery_media_internals.dart';
@@ -45,15 +46,28 @@ class GalleryYoutubeItem extends StatefulWidget {
   /// Whether to keep the screen on while this video is playing.
   final bool keepScreenOnWhilePlaying;
 
+  /// Gallery-wide caption state, shared by every YouTube item so it carries
+  /// over swipes and fullscreen. Toggled by the CC button.
+  final ValueNotifier<bool> youtubeCaptionsNotifier;
+
+  /// Preferred caption language (e.g. `en`) used when captions are on.
+  final String youtubeCaptionLanguage;
+
+  /// Whether to show the CC button inline and in fullscreen.
+  final bool showYoutubeCaptionToggle;
+
   const GalleryYoutubeItem({
     super.key,
     required this.item,
     required this.index,
     required this.activeYoutubeNotifier,
     required this.galleryBloc,
+    required this.youtubeCaptionsNotifier,
     this.offlineBuilder,
     this.theme,
     this.keepScreenOnWhilePlaying = true,
+    this.youtubeCaptionLanguage = 'en',
+    this.showYoutubeCaptionToggle = false,
   });
 
   @override
@@ -87,11 +101,17 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
   /// [_holdWakelockThroughSwap]).
   Timer? _swapWakelockHold;
 
+  /// The WebView controller [youtubeCaptionsScript] was last installed in.
+  /// Each fullscreen enter/exit binds a new WebView, which starts without the
+  /// caption state and needs it installed again once it is ready.
+  Object? _captionsWebView;
+
   bool get _currentlyPlaying => _controller?.value.isPlaying == true;
 
   @override
   void initState() {
     super.initState();
+    widget.youtubeCaptionsNotifier.addListener(_applyCaptions);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.galleryBloc.state.currentIndex == widget.index) {
         _activate();
@@ -152,12 +172,16 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
 
     final c = YoutubePlayerController(
       initialVideoId: id,
-      flags: const YoutubePlayerFlags(
+      flags: YoutubePlayerFlags(
         hideControls: true,
         autoPlay: false,
         hideThumbnail: true,
         mute: false,
-        enableCaption: false,
+        // Only the starting hint: the flags are fixed per controller, and
+        // cc_load_policy can't force captions off. _applyCaptions enforces
+        // the current state in every WebView this controller binds.
+        enableCaption: widget.youtubeCaptionsNotifier.value,
+        captionLanguage: widget.youtubeCaptionLanguage,
       ),
     );
     _controller = c;
@@ -174,6 +198,10 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     final c = _controller;
     if (c == null || !mounted) return;
     final v = c.value;
+
+    // Before the resume/play below, so the caption state is in place when
+    // playback starts.
+    _installCaptions(v);
 
     if (!_previousIsReady && v.isReady) {
       _previousIsReady = true;
@@ -254,6 +282,53 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     _swapWakelockHold = null;
   }
 
+  /// Installs the caption state in the WebView the controller is bound to,
+  /// once per WebView. `isReady` is reset on every fullscreen swap and set
+  /// again only after the new WebView's player is ready, so the new
+  /// controller identity seen here is the WebView now showing the video.
+  void _installCaptions(YoutubePlayerValue v) {
+    final webView = v.webViewController;
+    if (!v.isReady || webView == null || identical(webView, _captionsWebView)) {
+      return;
+    }
+    _captionsWebView = webView;
+    _applyCaptions();
+  }
+
+  /// Applies the gallery's caption state to the current WebView. Runs on
+  /// install and whenever the state is toggled; the script re-applies it
+  /// itself on the first play and whenever YouTube loads the captions module.
+  void _applyCaptions() {
+    final c = _controller;
+    final webView = c?.value.webViewController;
+    // While a swap is in progress the old WebView is going away; the new one
+    // picks up the state in _installCaptions once it is ready.
+    if (c == null || webView == null || !c.value.isReady) return;
+    webView
+        .evaluateJavascript(
+          source: youtubeCaptionsScript(
+            enabled: widget.youtubeCaptionsNotifier.value,
+            languageCode: widget.youtubeCaptionLanguage,
+          ),
+        )
+        .catchError((Object e) {
+      developer.log('Could not apply YouTube captions: $e', name: 'kGallery');
+      return null;
+    });
+  }
+
+  void _toggleCaptions() {
+    final captions = widget.youtubeCaptionsNotifier;
+    captions.value = !captions.value;
+    // Keep the controls up long enough to see the change.
+    final state = widget.galleryBloc.state;
+    if (_currentlyPlaying &&
+        state.isUIVisible &&
+        state.currentIndex == widget.index) {
+      startHideUITimer(widget.galleryBloc, widget.index);
+    }
+  }
+
   void _deactivate({bool fromDispose = false}) {
     cancelHideUITimer();
     _endSwapHold();
@@ -263,6 +338,7 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
 
     c.removeListener(_listener);
     _controller = null;
+    _captionsWebView = null;
     _previousIsReady = false;
     _previousIsPlaying = false;
     // Silence playback before disposing. The gallery's close path pauses while
@@ -313,6 +389,8 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
         GalleryYoutubeFullscreenRoute(
           ytController: c,
           theme: widget.theme,
+          youtubeCaptionsNotifier: widget.youtubeCaptionsNotifier,
+          showYoutubeCaptionToggle: widget.showYoutubeCaptionToggle,
         ),
       );
     } finally {
@@ -335,10 +413,19 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
     if (oldWidget.keepScreenOnWhilePlaying != widget.keepScreenOnWhilePlaying) {
       _syncWakelock();
     }
+    if (oldWidget.youtubeCaptionsNotifier != widget.youtubeCaptionsNotifier) {
+      oldWidget.youtubeCaptionsNotifier.removeListener(_applyCaptions);
+      widget.youtubeCaptionsNotifier.addListener(_applyCaptions);
+      _applyCaptions();
+    } else if (oldWidget.youtubeCaptionLanguage !=
+        widget.youtubeCaptionLanguage) {
+      _applyCaptions();
+    }
   }
 
   @override
   void dispose() {
+    widget.youtubeCaptionsNotifier.removeListener(_applyCaptions);
     _isFullscreen.dispose();
     _deactivate(fromDispose: true);
     super.dispose();
@@ -416,6 +503,12 @@ class _GalleryYoutubeItemState extends State<GalleryYoutubeItem>
                       child: GalleryYoutubeFullscreenButton(
                         galleryBloc: widget.galleryBloc,
                         onTap: _enterFullscreen,
+                        leading: widget.showYoutubeCaptionToggle
+                            ? GalleryYoutubeCaptionsButton(
+                                captionsEnabled: widget.youtubeCaptionsNotifier,
+                                onTap: _toggleCaptions,
+                              )
+                            : null,
                       ),
                     ),
                 ],
