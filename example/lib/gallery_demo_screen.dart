@@ -10,6 +10,32 @@ import 'package:k_gallery/k_gallery.dart';
 const String kBase64SampleImage =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAADMElEQVR4nOzVwQnAIBQFQYXff81RUkQCOyDj1YOPnbXWPmeTRef+/3O/OyBjzh3CD95BfqICMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMK0CMO0TAAD//2Anhf4QtqobAAAAAElFTkSuQmCC';
 
+// dart format off
+/// Nature photos for the image items, as [Picsum](https://picsum.photos) IDs
+/// (photos from Unsplash). Each ID is a fixed photo, so the demo looks the same
+/// on every run.
+const List<int> _natureImageIds = [
+  10, 11, 12, 13, 14, 15, 16, 17, 18, 25, 27, 29,
+  33, 35, 37, 38, 46, 54, 55, 62, 66, 70, 82, 83,
+  89, 92, 93, 95, 98, 107, 108, 110, 112, 116, 118, 125,
+  126, 127, 128, 132, 136, 140, 141, 147, 152, 159, 162, 165,
+  166, 167, 168, 170, 176, 179, 184, 185, 186, 187, 189, 190,
+  196, 198, 202, 206, 213, 215, 216, 217, 218, 219, 222, 227,
+  229, 231, 235, 243, 247, 251, 255, 256, 260, 261, 266, 277,
+  278, 287, 289, 295, 296, 301, 306, 309, 313,
+];
+// dart format on
+
+/// Picsum URL for a nature photo, at the size the demo uses everywhere.
+String _natureImage(int id) => 'https://picsum.photos/id/$id/600/800';
+
+/// Grid thumbnail for a YouTube video (the same image YouTube shows).
+String _youtubeThumbnail(String videoId) =>
+    'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+
+/// Items before the first nature photo in the demo list.
+const int _mediaItemCount = 7;
+
 class DemoGalleryScreen extends StatefulWidget {
   static const id = 'k_gallery_demo';
   static const path = '/$id';
@@ -22,6 +48,13 @@ class DemoGalleryScreen extends StatefulWidget {
 
 class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
   final ScrollController _scrollController = ScrollController();
+
+  /// Caption settings for YouTube items, changed from the app bar menu. Each
+  /// gallery opens with [_youtubeCaptionsEnabled]; the viewer can then flip
+  /// captions with the CC button for the rest of that gallery session.
+  bool _youtubeCaptionsEnabled = false;
+  // Both default to false in kGallery; the demo opts in to the CC button.
+  bool _showYoutubeCaptionToggle = true;
 
   /// A custom cache manager shared between this grid and the gallery. Passing
   /// the same instance to both the grid thumbnails and [KGallery.show] means an
@@ -133,8 +166,10 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
       // Reuse the grid's cache so images already fetched for the thumbnails
       // load instantly full-screen.
       cacheManager: _cacheManager,
-      // Cap the in-memory bitmap width for full-screen images to roughly the
-      // display resolution, reducing memory pressure for very large sources.
+      // YouTube captions: start state, preferred track, and the CC button.
+      youtubeCaptionsEnabled: _youtubeCaptionsEnabled,
+      youtubeCaptionLanguage: 'en',
+      showYoutubeCaptionToggle: _showYoutubeCaptionToggle,
       progressWidget: Container(
         color: Colors.black,
         child: const Center(
@@ -146,6 +181,38 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
     if (result != null && mounted) {
       _scrollToIndex(result, _getCrossAxisCount(context));
     }
+  }
+
+  /// App bar menu for the YouTube caption options passed to [KGallery.show].
+  Widget _buildCaptionsMenu() {
+    return PopupMenuButton<String>(
+      tooltip: 'YouTube captions',
+      icon: Icon(
+        _youtubeCaptionsEnabled
+            ? Icons.closed_caption
+            : Icons.closed_caption_off,
+      ),
+      onSelected: (value) => setState(() {
+        switch (value) {
+          case 'start_on':
+            _youtubeCaptionsEnabled = !_youtubeCaptionsEnabled;
+          case 'show_toggle':
+            _showYoutubeCaptionToggle = !_showYoutubeCaptionToggle;
+        }
+      }),
+      itemBuilder: (context) => [
+        CheckedPopupMenuItem(
+          value: 'start_on',
+          checked: _youtubeCaptionsEnabled,
+          child: const Text('Start with captions on'),
+        ),
+        CheckedPopupMenuItem(
+          value: 'show_toggle',
+          checked: _showYoutubeCaptionToggle,
+          child: const Text('Show CC button'),
+        ),
+      ],
+    );
   }
 
   Widget _buildActionMenu(
@@ -198,29 +265,31 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<GalleryItem> contentList = List.generate(100, (index) {
+    final List<GalleryItem>
+    contentList = List.generate(_mediaItemCount + _natureImageIds.length, (
+      index,
+    ) {
       if (index == 0) {
-        return const GalleryItem(
+        return GalleryItem(
           url:
               'https://videos.pexels.com/video-files/6896062/6896062-hd_720_1280_30fps.mp4',
           type: GalleryItemType.video,
           title: 'Forest Stream (Vertical)',
           description:
               'A beautiful vertical video of a forest stream to test gallery behavior.',
-          thumbnailUrl:
-              'https://images.pexels.com/videos/7098293/pexels-photo-7098293.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500',
+          thumbnailUrl: _natureImage(28),
         );
       }
       if (index == 1) {
-        return const GalleryItem(
+        return GalleryItem(
           url:
               'https://flutter.github.io/assets-for-api-docs/assets/videos/bee.mp4',
           type: GalleryItemType.video,
-          title: 'Big Buck Bunny (Video)',
+          title: 'Honey Bee (Video)',
           description:
-              'A large and lovable rabbit deals with three bullying rodents. This demonstrates the MediaKit integration.',
-          thumbnailUrl:
-              'https://i.vimeocdn.com/video/797382244-0106ae13e902e09d0f02d8f404fa80581f38d1b8b7846b3f8e87ef391ffb8c99-d?f=webp&region=us',
+              'A bee at work among the flowers, played by media_kit with the '
+              'same controls as the rest of the gallery.',
+          thumbnailUrl: _natureImage(106),
         );
       }
       if (index == 2) {
@@ -235,12 +304,15 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
         );
       }
       if (index == 3) {
-        return const GalleryItem(
+        return GalleryItem(
           url: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
           type: GalleryItemType.youtube,
           title: 'Big Buck Bunny (YouTube)',
           description:
-              'Resolved via youtube_explode_dart and played by media_kit using the same controls as the rest of the gallery.',
+              'Played by the YouTube player with the same seekbar and '
+              'play/pause controls as the rest of the gallery. This video has '
+              'no captions.',
+          thumbnailUrl: _youtubeThumbnail('aqz-KE-bpKQ'),
         );
       }
       if (index == 4) {
@@ -255,14 +327,29 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
         );
       }
       if (index == 5) {
-        return const GalleryItem(
+        return GalleryItem(
           url: 'https://www.youtube.com/watch?v=a3ICNMQW7Ok',
           type: GalleryItemType.youtube,
+          thumbnailUrl: _youtubeThumbnail('a3ICNMQW7Ok'),
           title: 'YouTube (Fullscreen Controls)',
           description:
               'A second YouTube item. Enter fullscreen and confirm the '
               'controls auto-hide after 3 seconds and reappear on tap, '
               'matching the media_kit video controls.',
+        );
+      }
+      if (index == 6) {
+        return GalleryItem(
+          url: 'https://www.youtube.com/watch?v=oI3ADcDH0Uc',
+          type: GalleryItemType.youtube,
+          title: 'Koalas 101 (YouTube, Captions)',
+          description:
+              'A narrated nature video with English captions. Tap the CC '
+              'button next to fullscreen to turn captions on or off; the '
+              'choice carries over fullscreen and the other YouTube items '
+              'until the gallery closes. The CC menu in the app bar sets '
+              'whether captions start on and whether the button is shown.',
+          thumbnailUrl: _youtubeThumbnail('oI3ADcDH0Uc'),
         );
       }
 
@@ -288,8 +375,7 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
       }
 
       return GalleryItem(
-        url:
-            'https://loremflickr.com/600/800/nature,landscape?lock=${index + 3}',
+        url: _natureImage(_natureImageIds[index - _mediaItemCount]),
         type: GalleryItemType.image,
         title: title,
         description: description,
@@ -297,7 +383,10 @@ class _DemoGalleryScreenState extends State<DemoGalleryScreen> {
     });
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Telegram Gallery Demo')),
+      appBar: AppBar(
+        title: const Text('Telegram Gallery Demo'),
+        actions: [_buildCaptionsMenu()],
+      ),
       body: GridView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.all(4),
