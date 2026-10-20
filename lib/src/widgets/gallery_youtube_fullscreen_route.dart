@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 import '../models/gallery_theme.dart';
+import 'media/gallery_media_internals.dart';
 
 /// Landscape fullscreen route that hosts an existing [YoutubePlayerController]
 /// without recreating it — playback continues seamlessly.
@@ -15,9 +16,19 @@ class GalleryYoutubeFullscreenRoute<T> extends PageRoute<T> {
   final YoutubePlayerController ytController;
   final GalleryTheme? theme;
 
+  /// Gallery-wide caption state toggled by the CC button. The inline item
+  /// stays mounted underneath and applies changes to this route's WebView.
+  /// No CC button is shown when `null`.
+  final ValueNotifier<bool>? youtubeCaptionsNotifier;
+
+  /// Whether to show the CC button.
+  final bool showYoutubeCaptionToggle;
+
   GalleryYoutubeFullscreenRoute({
     required this.ytController,
     this.theme,
+    this.youtubeCaptionsNotifier,
+    this.showYoutubeCaptionToggle = false,
   });
 
   @override
@@ -66,7 +77,11 @@ class GalleryYoutubeFullscreenRoute<T> extends PageRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    return _FullscreenContent(controller: ytController, theme: theme);
+    return _FullscreenContent(
+      controller: ytController,
+      theme: theme,
+      captions: showYoutubeCaptionToggle ? youtubeCaptionsNotifier : null,
+    );
   }
 
   @override
@@ -84,7 +99,14 @@ class _FullscreenContent extends StatefulWidget {
   final YoutubePlayerController controller;
   final GalleryTheme? theme;
 
-  const _FullscreenContent({required this.controller, this.theme});
+  /// Caption state for the CC button; no button when `null`.
+  final ValueNotifier<bool>? captions;
+
+  const _FullscreenContent({
+    required this.controller,
+    this.theme,
+    this.captions,
+  });
 
   @override
   State<_FullscreenContent> createState() => _FullscreenContentState();
@@ -134,6 +156,12 @@ class _FullscreenContentState extends State<_FullscreenContent> {
     _hideTimer = null;
   }
 
+  void _toggleCaptions(ValueNotifier<bool> captions) {
+    captions.value = !captions.value;
+    // Keep the controls up long enough to see the change.
+    if (widget.controller.value.isPlaying) _startHideTimer();
+  }
+
   void _toggleControls() {
     setState(() => _controlsVisible = !_controlsVisible);
     if (_controlsVisible && widget.controller.value.isPlaying) {
@@ -155,6 +183,7 @@ class _FullscreenContentState extends State<_FullscreenContent> {
     final controller = widget.controller;
     final activeColor = widget.theme?.seekbarActiveColor ?? Colors.white;
     final inactiveColor = widget.theme?.seekbarInactiveColor ?? Colors.white30;
+    final captions = widget.captions;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -264,6 +293,12 @@ class _FullscreenContentState extends State<_FullscreenContent> {
                                     ),
                                   ),
                                   const Spacer(),
+                                  if (captions != null)
+                                    GalleryYoutubeCaptionsButton(
+                                      captionsEnabled: captions,
+                                      onTap: () => _toggleCaptions(captions),
+                                      framed: false,
+                                    ),
                                   GestureDetector(
                                     onTap: () =>
                                         Navigator.of(context).maybePop(),

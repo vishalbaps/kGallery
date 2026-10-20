@@ -25,6 +25,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 - 🖼️ **Multi-Media Support**: Seamlessly view images, watch videos, listen to audio, and play YouTube links — all with unified controls.
 - 📺 **YouTube Playback**: Play any YouTube URL (`youtu.be/...`, `youtube.com/watch?v=...`, `/shorts/...`, `/embed/...`) with play/pause, buffering indicator, and seekbar. Tap `⤢` for a landscape fullscreen view with timer and seekbar.
+- 💬 **YouTube Captions**: Captions start off, even for videos whose uploader set them on by default. Opt in to a CC button that lets the viewer turn them on or off (inline and fullscreen) with `showYoutubeCaptionToggle: true`, or start with captions on via `youtubeCaptionsEnabled: true`.
 - 🔍 **Pinch-to-Zoom**: Advanced image viewing with tap-centered double-tap zoom and smooth pinch gestures (up to 8×).
 - 🧬 **Base64 Images**: Render inline `data:image/...;base64,...` URIs anywhere an image appears — no network request, no model changes.
 - 🎞️ **Thumbnail Strip**: Animated, haptic-enabled thumbnail strip with a live seekbar for quick navigation.
@@ -42,7 +43,7 @@ A high-performance, premium, and fully-featured media gallery viewer for Flutter
 
 ```yaml
 dependencies:
-  k_gallery: ^1.1.5
+  k_gallery: ^1.1.6
 ```
 
 ### 2. Platform Setup
@@ -136,6 +137,27 @@ GalleryItem(
 
 > Your use of YouTube content is governed by the [YouTube Terms of Service](https://www.youtube.com/t/terms). Respect creators' embedding settings.
 
+### YouTube captions
+
+YouTube items start with captions **off**, including videos whose uploader set captions to show by default, and without a CC button. Both are opt-in:
+
+```dart
+KGallery.show(
+  context,
+  contentList: items,
+  initialIndex: 0,
+  youtubeCaptionsEnabled: false,   // starting state (default: false)
+  youtubeCaptionLanguage: 'en',    // preferred track when captions are on
+  showYoutubeCaptionToggle: true,  // show the CC button (default: false)
+);
+```
+
+With `showYoutubeCaptionToggle: true`, a **CC** button next to the fullscreen button (and in the fullscreen controls) lets the viewer turn captions on or off; it follows the same auto-hide as the other controls. The viewer's choice carries over fullscreen and every other YouTube item until the gallery closes, and each new gallery starts from `youtubeCaptionsEnabled` again. Without the button, captions always follow `youtubeCaptionsEnabled`.
+
+When captions are on, the gallery picks the `youtubeCaptionLanguage` track if the video has one, including a regional variant such as `en-GB` for `en`. Otherwise YouTube's own default track is shown, which may be auto-generated.
+
+When enabled, the CC button appears on every YouTube video, including videos without captions, where turning them on shows nothing. YouTube's player API doesn't list auto-generated tracks, so it can't tell a video without captions from one that has only auto-generated captions.
+
 ### Keeping the screen on during playback
 
 While a video or YouTube item is playing (inline or fullscreen), the gallery keeps the device screen from dimming or auto-locking. The screen returns to its normal auto-lock timeout as soon as playback pauses, ends, or fails, the item is swiped away, or the gallery closes. Images and audio never keep the screen on.
@@ -204,6 +226,9 @@ Navigator.of(context).push(
 | `cacheManager` | `BaseCacheManager?` | shared default | Cache manager for network images (full-screen, thumbnails, audio artwork). Pass your own `CacheManager(Config(...))` to share a cache with the rest of your app or control the disk-cache policy. Re-exported from `package:k_gallery`. |
 | `memCacheWidth` | `int?` | — | Caps the in-memory bitmap width for full-screen network images (`CachedNetworkImage.memCacheWidth`) to reduce memory for very large sources. Thumbnails use their own small fixed decode size. |
 | `keepScreenOnWhilePlaying` | `bool` | `true` | Keeps the screen from dimming or auto-locking while a video or YouTube item is playing (inline or fullscreen). Released on pause, end, failure, swipe away, and close. Set to `false` to always use the device's normal auto-lock. |
+| `youtubeCaptionsEnabled` | `bool` | `false` | Whether YouTube items start with captions shown. Enforced even for videos whose uploader set captions on by default. With `showYoutubeCaptionToggle`, the viewer's choice lasts for the rest of the gallery session; each new gallery starts from this value. |
+| `youtubeCaptionLanguage` | `String` | `'en'` | Preferred caption language (ISO 639-1, e.g. `es`; regional codes such as `pt-BR` also work) used when captions are on. Falls back to YouTube's default track when the video doesn't offer it. |
+| `showYoutubeCaptionToggle` | `bool` | `false` | Shows a CC button on YouTube items, inline and in fullscreen, to turn captions on or off. While `false`, captions always follow `youtubeCaptionsEnabled`. |
 
 ### `GalleryTheme` fields
 

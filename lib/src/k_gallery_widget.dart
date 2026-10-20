@@ -119,6 +119,32 @@ class KGallery extends StatefulWidget {
   /// device's normal auto-lock, even while a video plays.
   final bool keepScreenOnWhilePlaying;
 
+  /// Whether YouTube items start with captions shown. Defaults to `false`.
+  ///
+  /// The caption state is enforced through the YouTube player API, so
+  /// captions stay off even for videos whose uploader set a default caption
+  /// track. When the viewer toggles captions with the CC button (see
+  /// [showYoutubeCaptionToggle]), the new state carries over fullscreen and
+  /// every other YouTube item until the gallery closes; each new gallery
+  /// starts from this value again.
+  final bool youtubeCaptionsEnabled;
+
+  /// Preferred caption language for YouTube items when captions are on, as an
+  /// ISO 639-1 code such as `en` or `es` (a regional code such as `pt-BR`
+  /// also works). Defaults to `en`.
+  ///
+  /// When a video has no track in this language, YouTube's own choice of
+  /// track is shown instead.
+  final String youtubeCaptionLanguage;
+
+  /// Whether YouTube items show a CC button, inline and in fullscreen, that
+  /// lets the viewer turn captions on or off. Defaults to `false`.
+  ///
+  /// While `false`, captions always follow [youtubeCaptionsEnabled]. When
+  /// shown, the button appears for every YouTube video: the player can't tell
+  /// a video without captions apart from one with only auto-generated ones.
+  final bool showYoutubeCaptionToggle;
+
   /// Creates a [KGallery] widget.
   ///
   /// [contentList] must not be empty.
@@ -142,6 +168,9 @@ class KGallery extends StatefulWidget {
     this.cacheManager,
     this.memCacheWidth,
     this.keepScreenOnWhilePlaying = true,
+    this.youtubeCaptionsEnabled = false,
+    this.youtubeCaptionLanguage = 'en',
+    this.showYoutubeCaptionToggle = false,
   })
       : assert(contentList.length > 0, 'contentList must not be empty'),
         assert(
@@ -206,6 +235,9 @@ class KGallery extends StatefulWidget {
     BaseCacheManager? cacheManager,
     int? memCacheWidth,
     bool keepScreenOnWhilePlaying = true,
+    bool youtubeCaptionsEnabled = false,
+    String youtubeCaptionLanguage = 'en',
+    bool showYoutubeCaptionToggle = false,
     Duration transitionDuration = const Duration(milliseconds: 250),
   }) {
     return Navigator.of(context).push<int>(
@@ -237,6 +269,9 @@ class KGallery extends StatefulWidget {
                 cacheManager: cacheManager,
                 memCacheWidth: memCacheWidth,
                 keepScreenOnWhilePlaying: keepScreenOnWhilePlaying,
+                youtubeCaptionsEnabled: youtubeCaptionsEnabled,
+                youtubeCaptionLanguage: youtubeCaptionLanguage,
+                showYoutubeCaptionToggle: showYoutubeCaptionToggle,
               ),
             ),
       ),
@@ -254,6 +289,11 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   final ValueNotifier<Player?> activePlayerNotifier = ValueNotifier(null);
   final ValueNotifier<YoutubePlayerController?> activeYoutubeNotifier =
   ValueNotifier(null);
+
+  /// Caption state for every YouTube item in this gallery session, toggled by
+  /// the CC button. Starts from [KGallery.youtubeCaptionsEnabled].
+  late final ValueNotifier<bool> _youtubeCaptions =
+      ValueNotifier(widget.youtubeCaptionsEnabled);
 
   late final Widget _effectiveProgressWidget;
   late final Widget _effectiveThumbProgressWidget;
@@ -292,6 +332,14 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
   }
 
   @override
+  void didUpdateWidget(KGallery oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.youtubeCaptionsEnabled != widget.youtubeCaptionsEnabled) {
+      _youtubeCaptions.value = widget.youtubeCaptionsEnabled;
+    }
+  }
+
+  @override
   void dispose() {
     // Media items release the wakelock as they are disposed; this covers any
     // missed release for every way of closing the gallery (back button,
@@ -300,6 +348,7 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
     _heightAnimController?.dispose();
     _pageController.dispose();
     _galleryBloc.close();
+    _youtubeCaptions.dispose();
     super.dispose();
   }
 
@@ -363,6 +412,11 @@ class _KGalleryState extends State<KGallery> with TickerProviderStateMixin {
                             memCacheWidth: widget.memCacheWidth,
                             keepScreenOnWhilePlaying:
                                 widget.keepScreenOnWhilePlaying,
+                            youtubeCaptionsNotifier: _youtubeCaptions,
+                            youtubeCaptionLanguage:
+                                widget.youtubeCaptionLanguage,
+                            showYoutubeCaptionToggle:
+                                widget.showYoutubeCaptionToggle,
                           ),
 
                           _GalleryTopBar(

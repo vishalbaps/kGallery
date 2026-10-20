@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:media_kit/media_kit.dart' hide PlayerState;
@@ -136,11 +137,16 @@ class GalleryFullscreenButton extends StatelessWidget {
   final GalleryBloc galleryBloc;
   final VoidCallback onTap;
 
+  /// Extra control shown to the left of the fullscreen button, sharing its
+  /// position and auto-hide (e.g. the YouTube captions toggle).
+  final Widget? leading;
+
   const GalleryFullscreenButton({
     super.key,
     required this.videoAspect,
     required this.galleryBloc,
     required this.onTap,
+    this.leading,
   });
 
   @override
@@ -168,20 +174,26 @@ class GalleryFullscreenButton extends StatelessWidget {
                 child: AnimatedOpacity(
                   opacity: visible ? 1.0 : 0.0,
                   duration: const Duration(milliseconds: 300),
-                  child: GestureDetector(
-                    onTap: onTap,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (leading != null) leading!,
+                      GestureDetector(
+                        onTap: onTap,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.fullscreen,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.fullscreen,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
+                    ],
                   ),
                 ),
               ),
@@ -260,10 +272,14 @@ class GalleryYoutubeFullscreenButton extends StatelessWidget {
   final GalleryBloc galleryBloc;
   final VoidCallback onTap;
 
+  /// See [GalleryFullscreenButton.leading].
+  final Widget? leading;
+
   const GalleryYoutubeFullscreenButton({
     super.key,
     required this.galleryBloc,
     required this.onTap,
+    this.leading,
   });
 
   @override
@@ -272,6 +288,74 @@ class GalleryYoutubeFullscreenButton extends StatelessWidget {
       videoAspect: 16 / 9,
       galleryBloc: galleryBloc,
       onTap: onTap,
+      leading: leading,
+    );
+  }
+}
+
+/// CC toggle for YouTube items: a filled icon while captions are on, an
+/// outlined one while they are off.
+///
+/// Shown for every YouTube video: the player's track list leaves out
+/// auto-generated captions, so it can't tell a video without captions apart
+/// from one that only has auto-generated ones.
+class GalleryYoutubeCaptionsButton extends StatelessWidget {
+  /// Gallery-wide caption state; the button only reads it.
+  final ValueListenable<bool> captionsEnabled;
+
+  final VoidCallback onTap;
+
+  /// Draws the translucent rounded backing of the inline media buttons. The
+  /// fullscreen route's bare icons pass `false`.
+  final bool framed;
+
+  const GalleryYoutubeCaptionsButton({
+    super.key,
+    required this.captionsEnabled,
+    required this.onTap,
+    this.framed = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: captionsEnabled,
+      builder: (context, enabled, _) {
+        final label = enabled ? 'Captions on' : 'Captions off';
+        final icon = Icon(
+          enabled ? Icons.closed_caption : Icons.closed_caption_off,
+          color: Colors.white,
+          size: 24,
+        );
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Semantics(
+            button: true,
+            label: label,
+            child: Tooltip(
+              message: label,
+              excludeFromSemantics: true,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: framed
+                    ? Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: icon,
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: icon,
+                      ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
